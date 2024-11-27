@@ -54,7 +54,7 @@ namespace SolidarityBookCatalog.Services
                 var properties = updatedBook.GetType().GetProperties();
                 foreach (var property in properties)
                 {
-                    if (property.Name == "Identifier" || property.Name == "Id")
+                    if (property.Name == "Identifier" || property.Name == "Id" )
                     {
                         continue;
                     }

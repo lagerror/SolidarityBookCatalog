@@ -43,16 +43,26 @@ namespace SolidarityBookCatalog.Services
             return flag;
         }
         //openapi调用时实现签名验证
-        public Msg Sign(string isbn,User user)
+        public Msg Sign(string isbn,User user,string actionType)
         {
             Msg msg = new Msg();
+            //模型校验
+            if (user.AppId == null || user.Nonce == null || user.Sign==null) 
+            {
+                msg.Code = 1;
+                msg.Message = "模型校验不对";
+                return msg;
+            }
             //验证签名
             using (var md5 = MD5.Create())
             {
+                //数据库后台取出对应的appKey
+                var appKey=_users.Find(x=>x.AppId == user.AppId).FirstOrDefault().AppKey;
+                
                 var data = Encoding.UTF8.GetBytes($"{user.AppId}{user.Nonce}{isbn}");
                 var hash = md5.ComputeHash(data);
                 string signStr= BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
-                hash = md5.ComputeHash(Encoding.UTF8.GetBytes(signStr + user.AppKey));
+                hash = md5.ComputeHash(Encoding.UTF8.GetBytes(signStr + appKey));
                 signStr = BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant(); ;
                 if (signStr == user.Sign)
                 { 
@@ -60,7 +70,18 @@ namespace SolidarityBookCatalog.Services
                 }
             }
             //验证权限
+            switch (actionType)
+            {
+                case "update":
+                    
+                    break;
+                case "delete":
 
+                    break;
+            
+            
+            
+            }
             return msg;
         }
     }

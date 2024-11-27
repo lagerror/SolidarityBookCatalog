@@ -12,10 +12,12 @@ namespace SolidarityBookCatalog.Controllers
     public class BooksController : ControllerBase
     {
         private readonly BookService _bookService;
+        private readonly UserService _userService;
        
-        public BooksController(BookService bookService)
+        public BooksController(BookService bookService,UserService userService)
         {
             _bookService = bookService;
+            _userService = userService;
         }
 
         [HttpGet]
@@ -125,14 +127,45 @@ namespace SolidarityBookCatalog.Controllers
             }
             return Ok(msg);
         }
+        
+        /// <summary>
+        /// 验证插入,user需要赋值appId,nonce
+        /// book中需要13位ISBN
+        /// </summary>
+        /// <param name="user"></param>
+        /// <param name="book"></param>
+        /// <returns></returns>
+        [HttpPost]
+        [Route("insertSign")]
+        public ActionResult<Msg> InsertSign(string appId,string nonce,string sign,Book book)
+        { 
+            Msg msg = new Msg();
+            User user = new User();
+            user.AppId = appId;
+            user.Nonce = nonce;
+            user.Sign = sign;
+            //如果验证成功
+            msg = _userService.Sign(book.Identifier, user);
+            if (msg.Code != 0)
+            {
+                return Ok(msg);
+            }
+            //插入,并记录创建者
+            book.UserName = appId;
+            msg = _bookService.Insert(book);
 
+            return Ok(msg);
+        }
         [HttpPut]
         public ActionResult<Msg> Update(string identifier, Book book)
         {
             Msg msg = new Msg();
+
+
+
             //模型校验
+            //检查输入的ISBN，去掉-，把10位的转换位13位
             if (book.Identifier != null) {
-                //检查输入的ISBN，去掉-，把10位的转换位13位
                 Tuple<bool, string> tuple = Book.validIsbn(book.Identifier);
                 if (tuple.Item1)
                 {
@@ -145,7 +178,7 @@ namespace SolidarityBookCatalog.Controllers
                     return Ok(msg);
                 }
             }
-
+            //检查年份
             if (book.Date != null)
             {
                 Tuple<bool, string> tuple1 = Book.validYear(book.Date);
@@ -160,9 +193,9 @@ namespace SolidarityBookCatalog.Controllers
                     return Ok(msg);
                 }
             }
-
+            
+            //检查价格
             if (book.Price != null) {
-                //检查价格
                 Tuple<bool, decimal> tuple2 = Book.validPrice(book.Price.ToString());
                 if ((tuple2.Item1))
                 {
@@ -197,6 +230,29 @@ namespace SolidarityBookCatalog.Controllers
             return  Ok(msg);
         }
 
+        [HttpPut]
+        [Route("updateSign")]
+        public ActionResult<Msg> UpdateSign(string appId, string nonce, string sign, Book book)
+        { 
+            Msg msg = new Msg();
+
+            User user = new User();
+            user.AppId = appId;
+            user.Nonce = nonce;
+            user.Sign = sign;
+            //如果验证成功
+            msg = _userService.Sign(book.Identifier, user);
+            if (msg.Code != 0)
+            {
+                return Ok(msg);
+            }
+
+            msg=_bookService.Update(book.Identifier, book);
+
+            return Ok(msg);
+        }
+
+
         [HttpDelete]
         public ActionResult<Msg> Delete(string identifier)
         {
@@ -219,6 +275,26 @@ namespace SolidarityBookCatalog.Controllers
             
             }
             return Ok(msg);
+        }
+
+        [HttpDelete]
+        public ActionResult<Msg> DeleteSign(string appId, string nonce, string sign, string identifier)
+        {
+            Msg msg = new Msg();
+
+            User user = new User();
+            user.AppId = appId;
+            user.Nonce = nonce;
+            user.Sign = sign;
+            
+            //如果验证成功
+            msg = _userService.Sign(identifier, user);
+            if (msg.Code != 0)
+            {
+                return Ok(msg);
+            }
+
+            return msg;
         }
     }
 }

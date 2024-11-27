@@ -86,10 +86,12 @@ namespace SolidarityBookCatalog.Models
         public string? Rights { get; set; } // 权利或版权声明
 
         [BsonElement("Price")]
-        //[Range(0, 99999999.99, ErrorMessage = "The value must be between 0 and 99999999.99")]
-        //[RegularExpression(@"^\d+(\.\d{1,2})?$", ErrorMessage = "The value must be a decimal with at most two decimal places")]
-        //全部改为前端验证
         public Decimal? Price   { get; set; }=0;  //价格十进制
+
+        public DateTime? Created { get; set; }=DateTime.Now;   //记录创建时间
+      
+        public string? UserName { get; set; }   //记录创建用户
+
 
         //将10位ISBN统一转换位13不带-的格式
         public static string ConvertIsbn10ToIsbn13(string isbn10)
