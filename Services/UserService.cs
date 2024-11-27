@@ -35,7 +35,6 @@ namespace SolidarityBookCatalog.Services
                 AppId = "appId",
                 Name = "长江大学图书馆",
                 Chmod = "777",
-
                 PublicKey = publicKey,
                 PrivateKey = privateKey,
             };
@@ -43,21 +42,26 @@ namespace SolidarityBookCatalog.Services
 
             return flag;
         }
-
-        public bool Sign(User user)
-        { 
-            bool flag=false;
+        //openapi调用时实现签名验证
+        public Msg Sign(string isbn,User user)
+        {
+            Msg msg = new Msg();
+            //验证签名
             using (var md5 = MD5.Create())
             {
-                var data = Encoding.UTF8.GetBytes($"{user.AppId}{user.AppKey}{user.Nonce}");
+                var data = Encoding.UTF8.GetBytes($"{user.AppId}{user.Nonce}{isbn}");
                 var hash = md5.ComputeHash(data);
                 string signStr= BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
+                hash = md5.ComputeHash(Encoding.UTF8.GetBytes(signStr + user.AppKey));
+                signStr = BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant(); ;
                 if (signStr == user.Sign)
                 { 
-                    flag = true;
+                   msg.Code=0;
                 }
             }
-            return flag;
+            //验证权限
+
+            return msg;
         }
     }
 }
