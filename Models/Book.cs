@@ -2,6 +2,7 @@
 using MongoDB.Bson;
 using System.ComponentModel.DataAnnotations;
 using System.Text.RegularExpressions;
+using Microsoft.Extensions.FileSystemGlobbing.Internal;
 
 namespace SolidarityBookCatalog.Models
 {
@@ -57,7 +58,7 @@ namespace SolidarityBookCatalog.Models
 
         //[ValidYear(ErrorMessage = "日期必须是4位有效年份。")]
         [BsonElement("Date")]
-        public string? Date { get; set; } = "2024"; // 日期 (建议使用 ISO 格式：YYYY)
+        public string? Date { get; set; } // 日期 (建议使用 ISO 格式：YYYY)
 
         [BsonElement("Type")]
         public string? Type { get; set; } // 资源类型
@@ -120,7 +121,7 @@ namespace SolidarityBookCatalog.Models
             return isbn13Prefix + checksum;
            
         }
-
+        //校验13位isbn
         public static bool CalculateIsbn13Checksum(string isbn13)
         {
             if (isbn13.Length != 13)
@@ -143,7 +144,8 @@ namespace SolidarityBookCatalog.Models
             return checksum.ToString() == isbn13.Substring(12, 1);
             
         }
-
+        
+        //控制端，检查ISBN，去掉-,统一转换位13
         public static  Tuple<bool,string> validIsbn(string isbn)
         {
             bool flag = false;
@@ -163,6 +165,42 @@ namespace SolidarityBookCatalog.Models
                 flag = true;
             }
             return new Tuple<bool,string>(flag,isbn);
+        }
+        //控制端，把年转为位四位
+        public static Tuple<bool, string> validYear(string year)
+        { 
+            bool flag=false;
+            //取出四位数字
+            string pattern = @"\b(\d{4})\b";
+            Match match = Regex.Match(year, pattern);
+            if (match.Success)
+            {
+                year = match.Groups[1].Value;
+            }
+            //看是否能转换为年
+            DateTime result;
+            if (DateTime.TryParseExact(year, "yyyy", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out result))
+            {
+                flag=true;
+            }
+            return new Tuple<bool,string>(flag, year);
+        }
+        //控制端，把价格转换为包含2位小时的十进制
+        public static Tuple<bool, decimal> validPrice(string price)
+        {
+            bool flag=false;
+            decimal result=0;
+            string pattern = @"^\d+(\.\d{1,2})?$";
+            Match match = Regex.Match(price, pattern);
+            if (match.Success)
+            {
+                price = match.Groups[1].Value;
+                if (decimal.TryParse(price, out result))
+                { 
+                    flag=true;
+                }
+            }
+            return new Tuple<bool, decimal>(flag, result);
         }
     }
 

@@ -1,3 +1,4 @@
+using Microsoft.OpenApi.Models;
 using SolidarityBookCatalog.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -7,17 +8,23 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new OpenApiInfo { Title = "图书馆共建图书目录测试", Version = "v1" });
+});
 //自定义服务，便于注入
 builder.Services.AddSingleton<BookService>();
-var app = builder.Build();
+builder.Services.AddSingleton<UserService>();
 
+var app = builder.Build();
 // Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
-{
+//发布后保留open api
     app.UseSwagger();
-    app.UseSwaggerUI();
-}
+    app.UseSwaggerUI(c =>
+    {
+        c.SwaggerEndpoint($"v1/swagger.json", "图书馆共建图书目录测试");
+    });
+
 
 app.UseAuthorization();
 

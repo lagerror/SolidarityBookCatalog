@@ -12,7 +12,7 @@ namespace SolidarityBookCatalog.Controllers
     public class BooksController : ControllerBase
     {
         private readonly BookService _bookService;
-
+       
         public BooksController(BookService bookService)
         {
             _bookService = bookService;
@@ -79,7 +79,9 @@ namespace SolidarityBookCatalog.Controllers
         public ActionResult<Msg> Insert(Book book)
         {
             Msg msg = new Msg();
-            //检查输入的ISBN
+
+            //model校验
+            //检查输入的ISBN，去掉-，把10位的转换位13位
             Tuple<bool,string> tuple= Book.validIsbn(book.Identifier);
             if (tuple.Item1)
             {
@@ -87,65 +89,111 @@ namespace SolidarityBookCatalog.Controllers
             }
             else { 
                 msg.Code = 1;
-                msg.Message = tuple.Item2;
+                msg.Message = "isbn不合规范";
+                return Ok(msg);
             }
-
+            //检查出版年
+            Tuple<bool,string> tuple1=Book.validYear(book.Date);
+            if ((tuple1.Item1))
+            {
+                book.Date = tuple1.Item2;
+            }
+            else { 
+                msg.Code= 2;
+                msg.Message = "出版年位4位年份";
+                return Ok(msg);
+            }
+            //检查价格
+            Tuple<bool, decimal> tuple2 = Book.validPrice(book.Price.ToString());
+            if ((tuple2.Item1))
+            {
+                book.Price = tuple2.Item2;
+            }
+            else {
+                msg.Code = 3;
+                msg.Message = "价格位最多两位小数的十进制数字";
+                return Ok(msg);
+            }
+            //插入数据
             try
             {
                 msg = _bookService.Insert(book);
-               
             }
             catch (Exception ex) {
                 msg.Code = 101;
-                msg.Message = ex.Message;
+                msg.Message =msg.Message+ ex.Message;
             }
             return Ok(msg);
         }
 
         [HttpPut]
-        public ActionResult<Msg> Update(string identifier, Book bookIn)
+        public ActionResult<Msg> Update(string identifier, Book book)
         {
             Msg msg = new Msg();
-
-            if (!ModelState.IsValid) {
-                msg.Code = 2;
-                msg.Message = "数据输入不合规范";
-                return Ok(msg);
-            }
-            //检查输入的ISBN
-            string cleanValue = Regex.Replace(identifier, @"[^\dX]", "");
-
-            if (cleanValue.Length == 10)
-            {
-                // Convert ISBN-10 to ISBN-13
-                identifier = Book.ConvertIsbn10ToIsbn13(cleanValue);
-            }
-            if (cleanValue.Length == 13)
-            {
-                if (cleanValue.Substring(12, 1) != Book.CalculateIsbn13Checksum(cleanValue.Substring(0, 12)).ToString())
+            //模型校验
+            if (book.Identifier != null) {
+                //检查输入的ISBN，去掉-，把10位的转换位13位
+                Tuple<bool, string> tuple = Book.validIsbn(book.Identifier);
+                if (tuple.Item1)
+                {
+                    book.Identifier = tuple.Item2;
+                }
+                else
                 {
                     msg.Code = 1;
-                    msg.Message = $"isbn{identifier}校验和不对";
-                    return msg;
+                    msg.Message = "isbn不合规范";
+                    return Ok(msg);
                 }
-                identifier = cleanValue;
             }
 
-            var book = _bookService.Get(identifier);
+            if (book.Date != null)
+            {
+                Tuple<bool, string> tuple1 = Book.validYear(book.Date);
+                if ((tuple1.Item1))
+                {
+                    book.Date = tuple1.Item2;
+                }
+                else
+                {
+                    msg.Code = 2;
+                    msg.Message = "出版年位4位年份";
+                    return Ok(msg);
+                }
+            }
 
-            if (book == null)
+            if (book.Price != null) {
+                //检查价格
+                Tuple<bool, decimal> tuple2 = Book.validPrice(book.Price.ToString());
+                if ((tuple2.Item1))
+                {
+                    book.Price = tuple2.Item2;
+                }
+                else
+                {
+                    msg.Code = 3;
+                    msg.Message = "价格位最多两位小数的十进制数字";
+                    return Ok(msg);
+                }
+
+            }
+
+
+            var bookOrgin = _bookService.Get(identifier);
+
+            if (bookOrgin == null)
             {
                 msg.Code = 1;
                 msg.Message = $"没有找到对应{identifier}的记录";
             }
             try
             {
-                msg = _bookService.Update(identifier, bookIn);
+                msg = _bookService.Update(identifier, book);
             }
             catch (Exception ex) { 
                 msg.Code=101;
-                msg.Message=ex.Message; 
+                msg.Message=msg.Message+ex.Message; 
             }
+
             return  Ok(msg);
         }
 
