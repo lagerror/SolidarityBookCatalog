@@ -287,12 +287,13 @@ namespace SolidarityBookCatalog.Controllers
             user.Nonce = nonce;
             user.Sign = sign;
             
-            //如果验证成功
+            //签名验证
             msg = _userService.Sign(identifier, user);
             if (msg.Code != 0)
             {
                 return Ok(msg);
             }
+            //权限验证
 
             return msg;
         }
