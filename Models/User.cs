@@ -27,7 +27,7 @@ namespace SolidarityBookCatalog.Models
         [BsonElement("appId")]
         public string? AppId { get; set; }
 
-        [BsonElement("name")]
+        [BsonElement("name")]  //用户昵称
         public string? Name { get; set; }
         
         //权限控制列表 仿LINUX chmod 777 模式，自己用户下数据为delete,insert,update,同一个市的，同一个省的，select默认全部具有

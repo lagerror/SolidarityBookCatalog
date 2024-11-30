@@ -54,10 +54,12 @@ namespace SolidarityBookCatalog.Services
                 var properties = updatedBook.GetType().GetProperties();
                 foreach (var property in properties)
                 {
-                    if (property.Name == "Identifier" || property.Name == "Id" )
+                    //这三个字段不能更改
+                    if (property.Name == "Identifier" || property.Name == "Id" || property.Name== "UserName")
                     {
                         continue;
                     }
+                    //更新非空字段
                     var value = property.GetValue(updatedBook, null);
                     if (property.PropertyType == typeof(string) && !string.IsNullOrEmpty((string)value))
                     {

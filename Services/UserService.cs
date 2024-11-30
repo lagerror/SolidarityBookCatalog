@@ -118,7 +118,7 @@ namespace SolidarityBookCatalog.Services
                 msg.Message = "没找到书目";
             }
             //通过图书的创建者查找记录所有者的省，市，和用户名
-            User creator= _users.Find<User>(x => x.Username == book.Creator).FirstOrDefault();
+            User creator= _users.Find<User>(x => x.AppId == book.UserName).FirstOrDefault();
 
 
             //如果是自己的记录

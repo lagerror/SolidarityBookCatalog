@@ -365,6 +365,7 @@ namespace SolidarityBookCatalog.Controllers
             msg = _userService.Sign(identifier, user);
             if (msg.Code != 0)
             {
+                msg.Message = "签名没有通过";
                 return Ok(msg);
             }
             //检查输入的ISBN，去掉-，把10位的转换位13位
@@ -387,7 +388,8 @@ namespace SolidarityBookCatalog.Controllers
                 msg.Message = $"没有删除数据{identifier}的权限";
                 return Ok(msg);
             }
-
+            //删除
+            msg= _bookService.Delete(identifier);
             return msg;
         }
     }
