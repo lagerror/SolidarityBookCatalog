@@ -192,7 +192,7 @@ namespace SolidarityBookCatalog.Models
         {
             bool flag=false;
             decimal result=0;
-            string pattern = @"^\d+(\.\d{1,2})?$";
+            string pattern = @"(\d+(\.\d{1,2})?)";// @"^\d+(\.\d{1,2})?$";
             Match match = Regex.Match(price, pattern);
             if (match.Success)
             {

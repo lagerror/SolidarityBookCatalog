@@ -41,7 +41,7 @@ namespace SolidarityBookCatalog.Models
         [BsonElement("nonce")]
         public string? Nonce { get; set; }
 
-        //关于密钥的存储只是用于测试，后继可以采用国密和weibase的模式
+        //关于密钥的存储只是用于测试，后继可以采用国密和webase的模式
         //rsa2048公钥
         [BsonElement("publicKey")]
         public string? PublicKey { get; set; }

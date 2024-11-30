@@ -33,10 +33,10 @@ namespace SolidarityBookCatalog.Services
                 Password = "thisistest",
                 Province = "湖北",
                 City = "荆州",
-                AppKey = "appKey",
-                AppId = "appId",
+                AppKey = "9wmzUlTaw67a8X5F",
+                AppId = "hubei.jingzhou.yangtzeu.library",
                 Name = "长江大学图书馆",
-                Chmod = "777",
+                Chmod = "FFFF",
                 PublicKey = publicKey,
                 PrivateKey = privateKey,
             };
@@ -71,7 +71,7 @@ namespace SolidarityBookCatalog.Services
                 var hash = md5.ComputeHash(data);
                 string signStr= BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
                 hash = md5.ComputeHash(Encoding.UTF8.GetBytes(signStr + appKey));
-                signStr = BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant(); ;
+                signStr = BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant(); 
                 if (signStr == user.Sign)
                 { 
                    msg.Code=0;
@@ -88,8 +88,9 @@ namespace SolidarityBookCatalog.Services
         /// <param name="appId">用户</param>
         /// <param name="actionType">操作类型</param>
         /// <returns></returns>
-        public Msg chmod(string isbn, string appId,PublicEnum.ActionType actionType) { 
+        public Msg chmod(string? isbn, string appId,PublicEnum.ActionType actionType) { 
             Msg msg= new Msg();
+
             //通过appId查到要操作的用户
             User user= _users.Find<User>(x => x.AppId == appId).FirstOrDefault();
             if (user == null)
@@ -97,6 +98,19 @@ namespace SolidarityBookCatalog.Services
                 msg.Code = 1;
                 msg.Message = "没找到用户";
             }
+            //把chmod十六进制转换为二进制
+            UInt16 right = Convert.ToUInt16(user.Chmod, 16);
+
+            //如果是插入，提前处理，因为不用检查修改和删除对象
+            if (actionType == PublicEnum.ActionType.insert)
+            {
+                if ((right & (UInt16)PublicEnum.RightMask.insert) == (UInt16)PublicEnum.RightMask.insert)
+                {
+                    msg.Code = 0;
+                    return msg;
+                }
+            }
+
             //通过isbn查找图书
             Book book= _books.Find<Book>(x=>x.Identifier==isbn).FirstOrDefault();
             if (book == null) { 
@@ -106,10 +120,78 @@ namespace SolidarityBookCatalog.Services
             //通过图书的创建者查找记录所有者的省，市，和用户名
             User creator= _users.Find<User>(x => x.Username == book.Creator).FirstOrDefault();
 
-            //把chmod十六进制转换为二进制
-            UInt16 right = Convert.ToUInt16(user.Chmod);
-            //如果有省级权限
-            if (user.Province == creator.Province)
+
+            //如果是自己的记录
+            if (user.AppId == creator.AppId)
+            {
+                switch (actionType)
+                {
+                    case PublicEnum.ActionType.delete:
+                        if ((right & (UInt16)PublicEnum.RightMask.delete) == (UInt16)PublicEnum.RightMask.delete)
+                        {
+                            msg.Code = 0;
+                            return msg;
+                        }
+                        break;
+                    case PublicEnum.ActionType.insert:
+                        if ((right & (UInt16)PublicEnum.RightMask.insert) == (UInt16)PublicEnum.RightMask.insert)
+                        {
+                            msg.Code = 0;
+                            return msg;
+                        }
+                        break;
+                    case PublicEnum.ActionType.update:
+                        if ((right & (UInt16)PublicEnum.RightMask.update) == (UInt16)PublicEnum.RightMask.update)
+                        {
+                            msg.Code = 0;
+                            return msg;
+                        }
+                        break;
+                    case PublicEnum.ActionType.select:
+                        if ((right & (UInt16)PublicEnum.RightMask.select) == (UInt16)PublicEnum.RightMask.select)
+                        {
+                            msg.Code = 0;
+                            return msg;
+                        }
+                        break;
+                }
+            }
+            else if (user.City == creator.City)  //拥有市级权限
+            {
+                switch (actionType)
+                {
+
+                    case PublicEnum.ActionType.delete:
+                        if ((right >> 4 & (UInt16)PublicEnum.RightMask.delete) == (UInt16)PublicEnum.RightMask.delete)
+                        {
+                            msg.Code = 0;
+                            return msg;
+                        }
+                        break;
+                    case PublicEnum.ActionType.insert:
+                        if ((right >> 4 & (UInt16)PublicEnum.RightMask.insert) == (UInt16)PublicEnum.RightMask.insert)
+                        {
+                            msg.Code = 0;
+                            return msg;
+                        }
+                        break;
+                    case PublicEnum.ActionType.update:
+                        if ((right >> 4 & (UInt16)PublicEnum.RightMask.update) == (UInt16)PublicEnum.RightMask.update)
+                        {
+                            msg.Code = 0;
+                            return msg;
+                        }
+                        break;
+                    case PublicEnum.ActionType.select:
+                        if ((right >> 4 & (UInt16)PublicEnum.RightMask.select) == (UInt16)PublicEnum.RightMask.select)
+                        {
+                            msg.Code = 0;
+                            return msg;
+                        }
+                        break;
+                }
+            }
+            else if (user.Province == creator.Province)  //拥有省级权限
             {
                 switch (actionType)
                 {
@@ -144,78 +226,8 @@ namespace SolidarityBookCatalog.Services
                         break;
                 }
             }
-            else if (user.City == creator.City) {
-                switch (actionType)
-                {
-
-                    case PublicEnum.ActionType.delete:
-                        if ((right >> 4 & (UInt16)PublicEnum.RightMask.delete) == (UInt16)PublicEnum.RightMask.delete)
-                        {
-                            msg.Code = 0;
-                            return msg;
-                        }
-                        break;
-                    case PublicEnum.ActionType.insert:
-                        if ((right >> 4 & (UInt16)PublicEnum.RightMask.insert) == (UInt16)PublicEnum.RightMask.insert)
-                        {
-                            msg.Code = 0;
-                            return msg;
-                        }
-                        break;
-                    case PublicEnum.ActionType.update:
-                        if ((right >> 4 & (UInt16)PublicEnum.RightMask.update) == (UInt16)PublicEnum.RightMask.update)
-                        {
-                            msg.Code = 0;
-                            return msg;
-                        }
-                        break;
-                    case PublicEnum.ActionType.select:
-                        if ((right >> 4 & (UInt16)PublicEnum.RightMask.select) == (UInt16)PublicEnum.RightMask.select)
-                        {
-                            msg.Code = 0;
-                            return msg;
-                        }
-                        break;
-                }
-
-
-            }
-            else if (user.AppId== creator.AppId)
-            {
-                switch (actionType)
-                {
-                    case PublicEnum.ActionType.delete:
-                        if ((right  & (UInt16)PublicEnum.RightMask.delete) == (UInt16)PublicEnum.RightMask.delete)
-                        {
-                            msg.Code = 0;
-                            return msg;
-                        }
-                        break;
-                    case PublicEnum.ActionType.insert:
-                        if ((right  & (UInt16)PublicEnum.RightMask.insert) == (UInt16)PublicEnum.RightMask.insert)
-                        {
-                            msg.Code = 0;
-                            return msg;
-                        }
-                        break;
-                    case PublicEnum.ActionType.update:
-                        if ((right & (UInt16)PublicEnum.RightMask.update) == (UInt16)PublicEnum.RightMask.update)
-                        {
-                            msg.Code = 0;
-                            return msg;
-                        }
-                        break;
-                    case PublicEnum.ActionType.select:
-                        if ((right  & (UInt16)PublicEnum.RightMask.select) == (UInt16)PublicEnum.RightMask.select)
-                        {
-                            msg.Code = 0;
-                            return msg;
-                        }
-                        break;
-                }
-
-
-            }
+            
+           
             return msg;
         }
     }
