@@ -77,10 +77,10 @@ namespace SolidarityBookCatalog.Models
         public string? Language { get; set; } // 语言 (如 "en", "zh")
 
         [BsonElement("Relation")]
-        public string? Relation { get; set; } // 相关资源
+        public string? Relation { get; set; } // 相关资源,记录分类号？
 
         [BsonElement("Coverage")]
-        public string? Coverage { get; set; } // 时间或地理范围
+        public string? Coverage { get; set; } // 时间或地理范围，记录页码？
 
         [BsonElement("Rights")]
         public string? Rights { get; set; } // 权利或版权声明
