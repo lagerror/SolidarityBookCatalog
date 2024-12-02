@@ -281,7 +281,7 @@ namespace SolidarityBookCatalog.Controllers
             return  Ok(msg);
         }
 
-        [HttpPut]
+        [HttpPost]
         [Route("updateSign")]
         public ActionResult<Msg> UpdateSign(string appId, string nonce, string sign, Book book)
         { 
@@ -350,7 +350,7 @@ namespace SolidarityBookCatalog.Controllers
             return Ok(msg);
         }
 
-        [HttpDelete]
+        [HttpPost]
         [Route("deleteSign")]
         public ActionResult<Msg> DeleteSign(string appId, string nonce, string sign, string identifier)
         {
