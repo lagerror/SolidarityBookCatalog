@@ -10,6 +10,7 @@ namespace SolidarityBookCatalog.Services
     {
         public readonly IMongoCollection<User> _users;
         public readonly IMongoCollection<Book> _books;
+        public readonly IMongoCollection<Holding> _holdings;
       
         public UserService(IConfiguration config)
         {
@@ -17,6 +18,7 @@ namespace SolidarityBookCatalog.Services
             var database = client.GetDatabase("BookReShare");
             _users = database.GetCollection<User>("user");
             _books = database.GetCollection<Book>("biblios");
+            _holdings= database.GetCollection<Holding>("holding");
         }
         public bool insert(User user) { 
             bool flag=false;
@@ -88,11 +90,11 @@ namespace SolidarityBookCatalog.Services
         /// <param name="appId">用户</param>
         /// <param name="actionType">操作类型</param>
         /// <returns></returns>
-        public Msg chmod(string? isbn, string appId,PublicEnum.ActionType actionType) { 
-            Msg msg= new Msg();
+        public Msg chmod(string? isbn, string appId, string tableName, PublicEnum.ActionType actionType) {
+            Msg msg = new Msg();
 
             //通过appId查到要操作的用户
-            User user= _users.Find<User>(x => x.AppId == appId).FirstOrDefault();
+            User user = _users.Find<User>(x => x.AppId == appId).FirstOrDefault();
             if (user == null)
             {
                 msg.Code = 1;
@@ -110,17 +112,31 @@ namespace SolidarityBookCatalog.Services
                     return msg;
                 }
             }
-
-            //通过isbn查找图书
-            Book book= _books.Find<Book>(x=>x.Identifier==isbn).FirstOrDefault();
-            if (book == null) { 
-                msg.Code = 2;
-                msg.Message = "没找到书目";
-            }
-            //通过图书的创建者查找记录所有者的省，市，和用户名
-            User creator= _users.Find<User>(x => x.AppId == book.UserName).FirstOrDefault();
-
-
+            User creator = new User();
+            switch (tableName)
+            {
+                case "biblios":
+                //通过isbn查找图书
+                    Book book = _books.Find<Book>(x => x.Identifier == isbn).FirstOrDefault();
+                    if (book == null)
+                    {
+                        msg.Code = 2;
+                        msg.Message = "没找到书目";
+                    }
+                    //通过图书的创建者查找记录所有者的省，市，和用户名
+                    creator = _users.Find<User>(x => x.AppId == book.UserName).FirstOrDefault();
+                    break;
+                case "holding":
+                    Holding holding = _holdings.Find<Holding>(x => x.Identifier == isbn & x.UserName == appId).FirstOrDefault();
+                    if (holding == null)
+                    {
+                        msg.Code = 2;
+                        msg.Message = "没找到馆藏";
+                    }
+                    //通过图书的创建者查找记录所有者的省，市，和用户名
+                    creator = _users.Find<User>(x => x.AppId == holding.UserName).FirstOrDefault();
+                    break;
+        }
             //如果是自己的记录
             if (user.AppId == creator.AppId)
             {

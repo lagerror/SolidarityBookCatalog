@@ -1,0 +1,139 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>统一检索系统</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+
+        .header {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            text-align: center;
+        }
+
+        .search-container {
+            margin: 20px;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 10px;
+            font-size: 16px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        .filters {
+            margin: 20px;
+        }
+
+        .filter-item {
+            margin-bottom: 10px;
+        }
+
+        .filter-label {
+            font-weight: bold;
+        }
+
+        .filter-options {
+            margin-top: 5px;
+        }
+
+        .filter-option {
+            display: inline-block;
+            margin-right: 10px;
+        }
+
+        .results {
+            margin: 20px;
+        }
+
+        .result-item {
+            border-bottom: 1px solid #ddd;
+            padding: 10px 0;
+        }
+
+        .result-cover {
+            width: 100px;
+            height: 150px;
+            background-color: #ddd;
+            display: inline-block;
+            margin-right: 20px;
+        }
+
+        .result-info {
+            display: inline-block;
+            vertical-align: top;
+        }
+
+        .pagination {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .page-number {
+            display: inline-block;
+            padding: 5px 10px;
+            margin: 0 5px;
+            border: 1px solid #ddd;
+            cursor: pointer;
+        }
+
+            .page-number.active {
+                background-color: #4CAF50;
+                color: white;
+            }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>统一检索系统</h1>
+    </div>
+
+    <div class="search-container">
+        <input type="text" class="search-input" placeholder="请输入关键词">
+    </div>
+
+    <div class="filters">
+        <div class="filter-item">
+            <span class="filter-label">图书类型：</span>
+            <div class="filter-options">
+                <span class="filter-option">全部</span>
+                <span class="filter-option">图书</span>
+                <span class="filter-option">期刊</span>
+                <span class="filter-option">论文</span>
+            </div>
+        </div>
+        <div class="filter-item">
+            <span class="filter-label">出版年份：</span>
+            <div class="filter-options">
+                <span class="filter-option">全部</span>
+                <span class="filter-option">2024</span>
+                <span class="filter-option">2023</span>
+                <span class="filter-option">2022</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="results">
+        <!-- 搜索结果将在这里动态插入 -->
+    </div>
+
+    <div class="pagination">
+        <span class="page-number active">1</span>
+        <span class="page-number">2</span>
+        <span class="page-number">3</span>
+        <span class="page-number">4</span>
+        <span class="page-number">5</span>
+    </div>
+
+</body>
+</html>

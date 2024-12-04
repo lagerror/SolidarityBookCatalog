@@ -193,7 +193,7 @@ namespace SolidarityBookCatalog.Controllers
             #endregion
 
             #region 权限验证
-            msg= _userService.chmod("",appId, PublicEnum.ActionType.insert);
+            msg= _userService.chmod("",appId,"biblios", PublicEnum.ActionType.insert);
             if(msg.Code != 0) 
             { 
                 msg.Code= 4;
@@ -312,7 +312,7 @@ namespace SolidarityBookCatalog.Controllers
                 return Ok(msg);
             }
             //权限验证
-            msg = _userService.chmod(book.Identifier, appId, PublicEnum.ActionType.update);
+            msg = _userService.chmod(book.Identifier, appId,"biblios", PublicEnum.ActionType.update);
             if (msg.Code != 0)
             {
                 msg.Code = 4;
@@ -381,7 +381,7 @@ namespace SolidarityBookCatalog.Controllers
                 return Ok(msg);
             }
             //权限验证
-            msg = _userService.chmod(identifier, appId, PublicEnum.ActionType.delete);
+            msg = _userService.chmod(identifier, appId,"biblios", PublicEnum.ActionType.delete);
             if (msg.Code != 0)
             {
                 msg.Code = 4;

@@ -15,6 +15,7 @@ builder.Services.AddSwaggerGen(c =>
 //自定义服务，便于注入
 builder.Services.AddSingleton<BookService>();
 builder.Services.AddSingleton<UserService>();
+builder.Services.AddSingleton<HoldingService>();
 
 var app = builder.Build();
 // Configure the HTTP request pipeline.
