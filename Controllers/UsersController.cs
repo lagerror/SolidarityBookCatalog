@@ -25,7 +25,7 @@ namespace SolidarityBookCatalog.Controllers
             //var indexModel = new CreateIndexModel<User>(indexKeysDefinition, indexOptions);
 
             //_userService._users.Indexes.CreateOneAsync(indexModel);
-            //_userService.insert(new Models.User());
+            _userService.insert(new Models.User());
             return new string[] { "value1", "value2" };
         }
 

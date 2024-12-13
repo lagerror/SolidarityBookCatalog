@@ -1,0 +1,87 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>简单轮播图</title>
+    <style>
+        .slider {
+            width: 100%;
+            margin: auto;
+            overflow: hidden;
+        }
+
+        .slides {
+            display: flex;
+            transition: transform 0.5s ease;
+        }
+
+        .slide {
+            width: 100%;
+            flex: 0 0 auto;
+            transition: opacity 1s ease;
+        }
+
+            .slide img {
+                width: 100%;
+                display: block;
+            }
+
+        .prev, .next {
+            cursor: pointer;
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 18px;
+            color: white;
+            background-color: rgba(0, 0, 0, 0.5);
+            padding: 10px;
+        }
+
+        .next {
+            right: 0;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="slider">
+        <div class="slides">
+            <div class="slide"><img src="./1/幻灯片6.png" alt="图片1"></div>
+           
+        </div>
+        <span class="prev">&#10094;</span>
+        <span class="next">&#10095;</span>
+    </div>
+
+    <script>
+  let slides = document.querySelector('.slides');
+  let slideArray = document.querySelectorAll('.slide');
+  let currentSlide = 0;
+  const slidesCount = slideArray.length;
+
+  function updateSlidePosition() {
+    slides.style.transform = 'translateX(-' + currentSlide * 100 + '%)';
+  }
+
+  function moveSlide(moveStep) {
+    currentSlide = (currentSlide + moveStep + slidesCount) % slidesCount;
+    updateSlidePosition();
+  }
+
+  document.querySelector('.next').addEventListener('click', function() {
+    moveSlide(1);
+  });
+
+  document.querySelector('.prev').addEventListener('click', function() {
+    moveSlide(-1);
+  });
+
+  // 自动轮播
+  setInterval(function() {
+    moveSlide(1);
+  }, 15000); // 15秒切换一次
+
+    </script>
+
+</body>
+</html>

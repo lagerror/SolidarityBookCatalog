@@ -13,9 +13,11 @@ builder.Services.AddSwaggerGen(c =>
     c.SwaggerDoc("v1", new OpenApiInfo { Title = "图书馆共建图书目录测试", Version = "v1" });
 });
 //自定义服务，便于注入
-builder.Services.AddSingleton<BookService>();
+builder.Services.AddHttpClient();
+builder.Services.AddSingleton<BibliosService>();
 builder.Services.AddSingleton<UserService>();
 builder.Services.AddSingleton<HoldingService>();
+
 
 var app = builder.Build();
 // Configure the HTTP request pipeline.

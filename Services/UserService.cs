@@ -9,7 +9,7 @@ namespace SolidarityBookCatalog.Services
     public class UserService
     {
         public readonly IMongoCollection<User> _users;
-        public readonly IMongoCollection<Book> _books;
+        public readonly IMongoCollection<Biblios> _books;
         public readonly IMongoCollection<Holding> _holdings;
       
         public UserService(IConfiguration config)
@@ -17,7 +17,7 @@ namespace SolidarityBookCatalog.Services
             var client = new MongoClient(config.GetConnectionString("BookDb"));
             var database = client.GetDatabase("BookReShare");
             _users = database.GetCollection<User>("user");
-            _books = database.GetCollection<Book>("biblios");
+            _books = database.GetCollection<Biblios>("biblios");
             _holdings= database.GetCollection<Holding>("holding");
         }
         public bool insert(User user) { 
@@ -31,19 +31,19 @@ namespace SolidarityBookCatalog.Services
             }
             user = new User
             {
-                Username = "yangtzeu",
+                Username = "library.upc.edu.cn",
                 Password = "thisistest",
-                Province = "湖北",
-                City = "荆州",
-                AppKey = "9wmzUlTaw67a8X5F",
-                AppId = "hubei.jingzhou.yangtzeu.library",
-                Name = "长江大学图书馆",
+                Province = "山东",
+                City = "青岛",
+                AppKey = "7a8X5FUmz9w6lTaw",
+                AppId = "shandong.qingdao.upc.library",
+                Name = "中国石油大学(华东)",
                 Chmod = "FFFF",
                 PublicKey = publicKey,
                 PrivateKey = privateKey,
             };
             _users.InsertOne(user);
-
+           
             return flag;
         }
        
@@ -117,7 +117,7 @@ namespace SolidarityBookCatalog.Services
             {
                 case "biblios":
                 //通过isbn查找图书
-                    Book book = _books.Find<Book>(x => x.Identifier == isbn).FirstOrDefault();
+                    Biblios book = _books.Find<Biblios>(x => x.Identifier == isbn).FirstOrDefault();
                     if (book == null)
                     {
                         msg.Code = 2;

@@ -29,6 +29,20 @@ namespace SolidarityBookCatalog.Services
             return msg;
         }
 
+        public bool RepeatKeyHolding(string identifier,string username,string bookRecNo)
+        {
+            bool flag = false;
+            var filter = Builders<Holding>.Filter.Eq(b => b.Identifier, identifier)
+                       & Builders<Holding>.Filter.Eq(b => b.UserName, username)
+                       & Builders<Holding>.Filter.Eq(b=>b.BookRecNo,bookRecNo);
+            if (_holdings.Find(filter).FirstOrDefault() != null)
+            {
+                flag = true;
+            }
+            return flag;
+        }
+
+
         public Msg Update(string identifier, Holding updatedHolding)
         {
             //不使用replaceOne整体替换，据说是updateOne高效一些

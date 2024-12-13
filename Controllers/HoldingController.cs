@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using MongoDB.Bson;
 using MongoDB.Driver;
 using SolidarityBookCatalog.Models;
 using SolidarityBookCatalog.Services;
@@ -12,11 +13,11 @@ namespace SolidarityBookCatalog.Controllers
     public class HoldingController : ControllerBase
     {
 
-        private readonly BookService _bookService;
+        private readonly BibliosService _bookService;
         private readonly UserService _userService;
         private readonly HoldingService _holdingService;
 
-        public HoldingController(BookService bookService, UserService userService,HoldingService holdingService)
+        public HoldingController(BibliosService bookService, UserService userService,HoldingService holdingService)
         {
             _bookService = bookService;
             _userService = userService;
@@ -33,6 +34,24 @@ namespace SolidarityBookCatalog.Controllers
             //_holdingService._holdings.Indexes.CreateOneAsync(indexModel);
 
             //_userService._users.Indexes.CreateOneAsync(indexModel);
+
+            // 定义复合索引键，用于单个图书馆的馆藏唯一 	identifier	bookrecno	UserName
+            var indexKeysDefinition = Builders<Holding>.IndexKeys
+                .Ascending("identifier")
+                .Ascending("bookrecno")
+                .Ascending("UserName");
+
+            // 创建索引模型
+            try
+            {
+                var indexModel = new CreateIndexModel<Holding>(indexKeysDefinition, new CreateIndexOptions { Unique = true });
+                _holdingService._holdings.Indexes.CreateOneAsync(indexModel);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
+
             return new string[] { "value1", "value2" };
         }
 
@@ -42,7 +61,7 @@ namespace SolidarityBookCatalog.Controllers
         {
             Holding holding=new Holding();
             holding.Identifier = "9787500161844";
-            Book book= _bookService.Get(holding.Identifier);
+            Biblios book= _bookService.Get(holding.Identifier);
             if (book != null)
             {
                 holding.BookRecNo = "1900180543";
@@ -74,7 +93,7 @@ namespace SolidarityBookCatalog.Controllers
             user.AppId = appId;
             user.Nonce = nonce;
             user.Sign = sign;
-            //签名验证
+            //1签名验证
             msg=_userService.Sign(holding.Identifier, user);
             if (msg.Code != 0)
             {
@@ -82,8 +101,8 @@ namespace SolidarityBookCatalog.Controllers
                 return Ok(msg);
             }
 
-            //检查输入的ISBN，去掉-，把10位的转换位13位
-            Tuple<bool, string> tuple = Book.validIsbn(holding.Identifier);
+            //2检查输入的ISBN，去掉-，把10位的转换位13位
+            Tuple<bool, string> tuple = Biblios.validIsbn(holding.Identifier);
             if (tuple.Item1)
             {
                 holding.Identifier = tuple.Item2;
@@ -95,11 +114,19 @@ namespace SolidarityBookCatalog.Controllers
                 return Ok(msg);
             }
 
-            //权限验证
+            //3检查是否存在相同用户，isbn,记录号的馆藏
+            if (_holdingService.RepeatKeyHolding(holding.Identifier, appId, holding.BookRecNo))
+            {
+                msg.Code = 4;
+                msg.Message = $"已有对应馆藏:{holding.Identifier};{appId};{holding.BookRecNo}";
+                return Ok(msg);
+            }
+
+            //4权限验证
             msg = _userService.chmod("", appId, "holding", PublicEnum.ActionType.insert);
             if (msg.Code != 0)
              {
-                    msg.Code = 4;
+                    msg.Code = 5;
                     msg.Message = "没有插入数据的权限";
                     return Ok(msg);
              }
@@ -128,7 +155,7 @@ namespace SolidarityBookCatalog.Controllers
                 return Ok(msg);
             }
             //检查输入的ISBN，去掉-，把10位的转换位13位
-            Tuple<bool, string> tuple = Book.validIsbn(holding.Identifier);
+            Tuple<bool, string> tuple = Biblios.validIsbn(holding.Identifier);
             if (tuple.Item1)
             {
                 holding.Identifier = tuple.Item2;
@@ -149,9 +176,7 @@ namespace SolidarityBookCatalog.Controllers
             }
             //更新数据
             msg = _holdingService.Update(holding.Identifier, holding);
-
             return Ok(msg);
-
         }
 
         [HttpPost]
@@ -173,7 +198,7 @@ namespace SolidarityBookCatalog.Controllers
                 return Ok(msg);
             }
             //检查输入的ISBN，去掉-，把10位的转换位13位
-            Tuple<bool, string> tuple = Book.validIsbn(identifier);
+            Tuple<bool, string> tuple = Biblios.validIsbn(identifier);
             if (tuple.Item1)
             {
                 identifier = tuple.Item2;
