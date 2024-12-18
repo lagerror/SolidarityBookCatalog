@@ -69,13 +69,17 @@ namespace SolidarityBookCatalog.Controllers
                 msg.Message = "没有从第三方下载MARC权限";
                 return msg;
             }
-            //下载并返回
+            //下载并插入到biblios并返回
             msg = await _bookService.GetFrom91Async(identifier);
 
             return msg;
         }
 
-
+        /// <summary>
+        /// 通过ISBN查询基本书目信息
+        /// </summary>
+        /// <param name="identifier">isbn传入时候无需转换</param>
+        /// <returns>基本书目信息</returns>
         [HttpGet]
         [Route("identifier")]
         public async Task<Msg> GetAsync(string identifier)
@@ -96,10 +100,16 @@ namespace SolidarityBookCatalog.Controllers
                         msg.Data = book;
                         return msg;
                     }
-                    else { 
+                    else
+                    {
                         msg.Code = 1;
                         msg.Message = "没有找到对应的书目";
                     }
+                }
+                else
+                {
+                    msg.Code = 2;
+                    msg.Message = "isbn号没有通过校验";
                 }
                
             }
@@ -163,12 +173,13 @@ namespace SolidarityBookCatalog.Controllers
         }
         
         /// <summary>
-        /// 验证插入,user需要赋值appId,nonce
-        /// book中需要13位ISBN
+        /// 各馆通过用户名上传书目数据
         /// </summary>
-        /// <param name="user"></param>
-        /// <param name="book"></param>
-        /// <returns></returns>
+        /// <param name="appId">馆用户分配的appId</param>
+        /// <param name="nonce">时间字符串</param>
+        /// <param name="sign">签名字符串</param>
+        /// <param name="book">图书基本数据，其中出版社，出版年，价格会进行检查</param>
+        /// <returns>MSG，code=0为正常，其它见message返回信息</returns>
         [HttpPost]
         [Route("insertSign")]
         public ActionResult<Msg> InsertSign(string appId,string nonce,string sign,Biblios book)

@@ -5,6 +5,7 @@ using SolidarityBookCatalog.Models;
 using System.Collections;
 using System.Linq;
 using DnsClient.Protocol;
+using Microsoft.AspNetCore.SignalR;
 
 namespace SolidarityBookCatalog.Services
 {
@@ -36,6 +37,26 @@ namespace SolidarityBookCatalog.Services
             Biblios biblios = null;
             bool flag=false;
             Msg msg = new Msg();
+            //检查ISBN是否合规
+            var tuple= Biblios.validIsbn(identifier);
+            if (tuple.Item1)
+            {
+                identifier = tuple.Item2;
+            }
+            else {
+                msg.Code = 10;
+                msg.Message = $"{identifier}校验不对";
+                return msg;
+            }
+            //检查是否存在书目
+            biblios= _books.Find<Biblios>(book => book.Identifier == identifier).FirstOrDefault();
+            if (biblios != null) {
+                msg.Code = 0;
+                msg.Message = $"{identifier}已经存在";
+                msg.Data = biblios;
+                return msg;
+            }
+            //如果不存在，则下载并插入BIBLIOS
             try
             {
                 string result = null;
@@ -54,10 +75,10 @@ namespace SolidarityBookCatalog.Services
 
                 //价格校验
                 string priceStr= MarcSubField(ht, "010", "d");
-                var tuple = Biblios.validPrice(priceStr);
+                var tuple3 = Biblios.validPrice(priceStr);
                 if (tuple.Item1)
                 {
-                    biblios.Price = tuple.Item2;
+                    biblios.Price = tuple3.Item2;
                 }
                 else {
                     msg.Code = 1;
@@ -102,6 +123,9 @@ namespace SolidarityBookCatalog.Services
                 msg.Code = 0;
                 msg.Message = "成功解析MARC";
                 msg.Data = biblios;
+                //插入数据库
+                biblios.UserName = "hubei.jingzhou.yangtzeu.library";
+                _books.InsertOne(biblios);
 
                 return msg;
             }

@@ -1,0 +1,143 @@
+﻿<!DOCTYPE html&gt;
+<html&gt;
+<head&gt;
+    <meta charset="utf-8" />
+    <title></title>
+</head>
+<body>
+    <pre>
+    前期系统只有三张表：biblios,holding,user,分别对应着书目，馆藏和各馆用户信息
+    一、biblios主要API接口:
+    1.通过ISBN查询图书基本信息
+    /// &lt;summary&gt;
+    /// 通过ISBN查询基本书目信息
+    /// &lt;/summary&gt;
+    /// &lt;param name="identifier"&gt;isbn传入时候无需转换&lt;/param&gt;
+    /// &lt;returns&gt;基本书目信息&lt;/returns&gt;
+    [HttpGet]
+    [Route("identifier")]
+    示例：
+    https://reader.yangtzeu.edu.cn/solidarity/api/biblios/identifier?identifier=9787801879905
+    返回值：
+    {
+    "code": 0,
+    "message": "查到书目",
+    "data": {
+    "id": "674ed031ff4de3a7a6097c27",
+    "title": "佣兵天下．3，生死宿敌",
+    "creator": "说不得大师著",
+    "subject": "长篇小说",
+    "description": "成功登陆狮子河的达海诺被从本部的龙骑士变相地剥夺了君权。法诺斯西征军与火狮子两大精锐军团爆发决战, 龙骑士、伪龙骑士、狂战士等超越兵种一一献身, 5 万军人浴血奋战……",
+    "publisher": "新世界出版社",
+    "contributor": null,
+    "date": "2006",
+    "type": null,
+    "format": null,
+    "identifier": "9787801879905",
+    "source": null,
+    "language": null,
+    "relation": "I247.5",
+    "coverage": "270页",
+    "rights": null,
+    "price": 22,
+    "created": "2024-12-03T09:03:41.948Z",
+    "userName": "hubei.jingzhou.yangtzeu.library"
+    }
+    }
+    2.各馆上传书目信息
+    /// &lt;summary&gt;
+    /// 各馆通过用户名上传书目数据
+    /// &lt;/summary&gt;
+    /// &lt;param name="appId"&gt;馆用户分配的appId&lt;/param&gt;
+    /// &lt;param name="nonce"&gt;时间字符串&lt;/param&gt;
+    /// &lt;param name="sign"&gt;签名字符串&lt;/param&gt;
+    /// &lt;param name="book"&gt;图书基本数据，其中出版社，出版年，价格会进行检查&lt;/param&gt;
+    /// &lt;returns&gt;MSG，code=0为正常，其它见message返回信息&lt;/returns&gt;
+    [httpPost]
+    示例：
+    https://reader.yangtzeu.edu.cn/solidarity/api/biblios/insertSign?appId=hubei.jingzhou.gcxy.library&nonce=2024/12/10 6:25:17&sign=b01d36c196c947f1a54ca8d14f507305
+    {
+    "Title": "\u5929\u4EBA\u5408\u4E00\uFF1A\u5C71\u6C34\u7530\u56ED\u5377",
+    "Creator": "\u6BDB\u5E86\u7F16\u8457",
+    "Subject": "\u8BD7\u8BCD",
+    "Description": "",
+    "Publisher": "\u6B66\u6C49\u5927\u5B66\u51FA\u7248\u793E",
+    "Contributor": null,
+    "Date": "2002",
+    "Type": null,
+    "Format": null,
+    "Identifier": "7-307-03632-0",
+    "Source": null,
+    "Language": null,
+    "Relation": "I222",
+    "Coverage": "225\u9875",
+    "Rights": null,
+    "Price": 10,
+    "Created": "2024-12-10T14:24:48.8960054+08:00",
+    "UserName": null
+    }
+    3.签名方式
+    //将{user.AppId}{user.Nonce}{isbn}做MD5去掉-并转为小写
+    var data = Encoding.UTF8.GetBytes($"{user.AppId}{user.Nonce}{isbn}");
+    var hash = md5.ComputeHash(data);
+    string signStr= BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
+    //将上步结果并上appKey再做MD5后去掉-并转为小写即为签名字符串
+    hash = md5.ComputeHash(Encoding.UTF8.GetBytes(signStr + appKey));
+    signStr = BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
+    二、holding馆藏库
+    1、通过ISBN查询馆藏
+    /// &lt;summary&gt;
+    /// 通过ISBN查询馆藏
+    ///  &lt;/summary&gt;
+    /// &lt;param name="identifier"&gt;ISBN&lt;/param&gt;
+    /// &lt;returns&gt;馆藏记录&lt;/returns&gt;
+
+    示例：
+    baseUrl+ api/Holding/identifier?identifier=9787801879905
+    返回值：
+    {
+    "code": 0,
+    "message": "查询到馆藏",
+    "data": {
+    "id": "675809e0f80692346fa950a8",
+    "identifier": "9787801879905",
+    "bookRecNo": "489466",
+    "userName": "hubei.jingzhou.yangtzeu.library",
+    "barcode": [
+    "[CD10167978, I247.5/2495:3,CD,A08]",
+    "[CD10167980, I247.5/2495:3,CD,C05]"
+    ]
+    }
+    }
+    2、馆藏数据提交
+    /// &lt;summary&gt;
+    /// 提交各馆馆藏
+    /// &lt;/summary&gt;
+    /// &lt;param name="appId"&gt;各馆appId&lt;/param&gt;
+    /// &lt;param name="nonce"&gt;时间&lt;/param&gt;
+    /// &lt;param name="sign"&gt;签名&lt;/param&gt;
+    /// &lt;param name="holding"&gt;馆藏&lt;/param&gt;
+    /// &lt;returns&gt;Msg&lt;/returns&gt;
+    [HttpPost]
+    [Route("insertSign")]
+    示例：
+    https://reader.yangtzeu.edu.cn/solidarity/api/holding/insertSign?appId=hubei.jingzhou.gcxy.library&nonce=2024/12/11 1:35:55&sign=9426dbd51cf384485b9f01bf84de8ce1
+    {
+    "Identifier": "7-307-03632-0",
+    "BookRecNo": "437874",
+    "UserName": null,
+    "Barcode": [
+    "[GC10000001, I222/272,JZTC,B13]"
+    ]
+    }
+
+    barcode 为详细馆藏列表： 条码，索取号，馆代码，馆藏地点
+    返回值Msg：
+    {
+    "code": 4,
+    "message": "已有对应馆藏:9787307036321;hubei.jingzhou.gcxy.library;437874",
+    "data": null
+    }
+</pre>
+</body>
+</html>

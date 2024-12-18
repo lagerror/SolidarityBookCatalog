@@ -13,6 +13,10 @@ namespace SolidarityBookCatalog.Services
             var database = client.GetDatabase("BookReShare");
             _holdings = database.GetCollection<Holding>("holding");
         }
+        public Holding Get(string identifier)
+        {
+            return _holdings.Find<Holding>(hoding => hoding.Identifier == identifier).FirstOrDefault();
+        }
 
         public Msg insert(Holding holding)
         {

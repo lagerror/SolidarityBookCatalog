@@ -36,54 +36,74 @@ namespace SolidarityBookCatalog.Controllers
             //_userService._users.Indexes.CreateOneAsync(indexModel);
 
             // 定义复合索引键，用于单个图书馆的馆藏唯一 	identifier	bookrecno	UserName
-            var indexKeysDefinition = Builders<Holding>.IndexKeys
-                .Ascending("identifier")
-                .Ascending("bookrecno")
-                .Ascending("UserName");
+            //var indexKeysDefinition = Builders<Holding>.IndexKeys
+            //    .Ascending("identifier")
+            //    .Ascending("bookrecno")
+            //    .Ascending("UserName");
 
-            // 创建索引模型
-            try
-            {
-                var indexModel = new CreateIndexModel<Holding>(indexKeysDefinition, new CreateIndexOptions { Unique = true });
-                _holdingService._holdings.Indexes.CreateOneAsync(indexModel);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine(ex.Message);
-            }
+            //// 创建索引模型
+            //try
+            //{
+            //    var indexModel = new CreateIndexModel<Holding>(indexKeysDefinition, new CreateIndexOptions { Unique = true });
+            //    _holdingService._holdings.Indexes.CreateOneAsync(indexModel);
+            //}
+            //catch (Exception ex)
+            //{
+            //    Console.WriteLine(ex.Message);
+            //}
 
             return new string[] { "value1", "value2" };
         }
-
-        // GET api/<HoldingController>/5
-        [HttpGet("{id}")]
-        public string Get(int id)
+        /// <summary>
+        /// 通过ISBN查询馆藏
+        /// </summary>
+        /// <param name="identifier">ISBN</param>
+        /// <returns>馆藏记录</returns>
+        [HttpGet]
+        [Route("identifier")]
+        public ActionResult<Msg> Get(string identifier)
         {
-            Holding holding=new Holding();
-            holding.Identifier = "9787500161844";
-            Biblios book= _bookService.Get(holding.Identifier);
-            if (book != null)
+            Msg msg = new Msg();
+            try
             {
-                holding.BookRecNo = "1900180543";
-                holding.UserName= "hubei.jingzhou.yangtzeu.library";
-                List<string> list = new List<string>();
-                string item = "CD11097715,I267.5/169,CD,H01";
-                list.Add(item);
-                item = "CD11108039,I267.5/169,CD,C11";
-                list.Add(item);
-                item = "CD11108040,I267.5/169,CD,C11";
-                list.Add(item);
-                item = "CD11108041,I267.5/169,CD,C11";
-                list.Add(item);
-                holding.Barcode = list;
-                _holdingService.insert(holding);
+                var tuple = Biblios.validIsbn(identifier);
+                if (tuple.Item1)
+                {
+                    var holding = _holdingService.Get(tuple.Item2);
+                    if (holding != null)
+                    {
+                        msg.Code = 0;
+                        msg.Message = "查询到馆藏";
+                        msg.Data = holding;
+                    }
+                    else
+                    {
+                        msg.Code = 1;
+                        msg.Message = "没有查询到馆藏";
+                    }
+                }
+                else
+                {
+                    msg.Code = 2;
+                    msg.Message = "isbn没有通过校验";
+                }
             }
-          
+            catch (Exception ex) {
+                msg.Code = 100;
+                msg.Message = $"馆藏查询异常：{ex.Message}";
+            }
 
-            return "value";
+            return msg;
         }
 
-        // POST api/<HoldingController>
+        /// <summary>
+        /// 提交各馆馆藏
+        /// </summary>
+        /// <param name="appId">各馆appId</param>
+        /// <param name="nonce">时间</param>
+        /// <param name="sign">签名</param>
+        /// <param name="holding">馆藏</param>
+        /// <returns>MSG</returns>
         [HttpPost]
         [Route("insertSign")]
         public ActionResult<Msg> InsertSign(string appId,string nonce,string sign,Holding holding)

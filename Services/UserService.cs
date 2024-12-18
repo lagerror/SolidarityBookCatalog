@@ -31,14 +31,14 @@ namespace SolidarityBookCatalog.Services
             }
             user = new User
             {
-                Username = "library.upc.edu.cn",
+                Username = "lib.ctgu.edu.cn",
                 Password = "thisistest",
-                Province = "山东",
-                City = "青岛",
-                AppKey = "7a8X5FUmz9w6lTaw",
-                AppId = "shandong.qingdao.upc.library",
-                Name = "中国石油大学(华东)",
-                Chmod = "FFFF",
+                Province = "湖北",
+                City = "宜昌",
+                AppKey = "Umz9w7a8X5F6lTaw",
+                AppId = "hubei.yichang.ctgu.library",
+                Name = "三峡大学",
+                Chmod = "FF",
                 PublicKey = publicKey,
                 PrivateKey = privateKey,
             };

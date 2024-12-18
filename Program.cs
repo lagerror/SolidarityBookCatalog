@@ -28,7 +28,7 @@ var app = builder.Build();
         c.SwaggerEndpoint($"v1/swagger.json", "图书馆共建图书目录测试");
     });
 
-
+app.UseStaticFiles();
 app.UseAuthorization();
 
 app.MapControllers();
