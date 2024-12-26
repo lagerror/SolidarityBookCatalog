@@ -17,7 +17,7 @@ builder.Services.AddHttpClient();
 builder.Services.AddSingleton<BibliosService>();
 builder.Services.AddSingleton<UserService>();
 builder.Services.AddSingleton<HoldingService>();
-
+builder.Services.AddSingleton<ElasticService>();
 
 var app = builder.Build();
 // Configure the HTTP request pipeline.

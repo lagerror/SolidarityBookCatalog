@@ -31,17 +31,20 @@ namespace SolidarityBookCatalog.Services
             }
             user = new User
             {
-                Username = "lib.ctgu.edu.cn",
+                Username = "lib.hbzyy.edu.cn",
                 Password = "thisistest",
                 Province = "湖北",
-                City = "宜昌",
-                AppKey = "Umz9w7a8X5F6lTaw",
-                AppId = "hubei.yichang.ctgu.library",
-                Name = "三峡大学",
+                City = "荆州",
+                AppKey = "F6lTaUmz9w7a8X5w",
+                AppId = "hubei.jingzhou.hbzyy.library",
+                Name = "湖北中医药高等专科学院",
                 Chmod = "FF",
                 PublicKey = publicKey,
                 PrivateKey = privateKey,
             };
+
+
+
             _users.InsertOne(user);
            
             return flag;
