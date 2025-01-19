@@ -1,5 +1,6 @@
 ﻿using MongoDB.Driver;
 using SolidarityBookCatalog.Models;
+using System.Text.RegularExpressions;
 
 namespace SolidarityBookCatalog.Services
 {
@@ -16,6 +17,31 @@ namespace SolidarityBookCatalog.Services
         public Holding Get(string identifier)
         {
             return _holdings.Find<Holding>(hoding => hoding.Identifier == identifier).FirstOrDefault();
+        }
+
+        public  List<Holding> search(string identifier, string prefix="all")
+        { 
+            List<Holding> list = new List<Holding>();
+            //不限定所在图书馆
+            FilterDefinition<Holding> filter = null;
+            if (prefix=="all")
+            {
+                filter = Builders<Holding>.Filter.Eq(u => u.Identifier, identifier);
+              
+            }
+            else    //指定图书馆
+            {
+                // 创建正则表达式过滤器
+                var regexPattern = $"^{prefix.Replace(".", "\\.")}.*";
+                filter = Builders<Holding>.Filter.And(
+                    Builders<Holding>.Filter.Eq(u => u.Identifier, identifier),
+                    Builders<Holding>.Filter.Regex(u => u.UserName, new Regex(regexPattern))
+                );
+            }
+            // 执行查询
+            list =_holdings.Find(filter).ToList();
+
+            return list;
         }
 
         public Msg insert(Holding holding)

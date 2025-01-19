@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using SolidarityBookCatalog.Models;
 using SolidarityBookCatalog.Services;
+using System.Linq;
 
 // For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
 
@@ -11,10 +12,12 @@ namespace SolidarityBookCatalog.Controllers
     public class ElasticController : ControllerBase
     {
         private ElasticService _elastic;
-        public ElasticController(ElasticService elasticService)
+        private ElasticNestService _elasticNest;
+        public ElasticController(ElasticService elasticService,ElasticNestService elasticNestService)
         {
             _elastic = elasticService;
-        
+            _elasticNest=elasticNestService;
+
         }
         // GET: api/<ElasticController>
         [HttpGet]
@@ -46,25 +49,23 @@ namespace SolidarityBookCatalog.Controllers
                     msg=_elastic.InsertBibliosAllAsync(pars).Result;
                     break;
 
+                case "elasticNest":
+                     _elasticNest.SearchBooksAsync(pars).GetAwaiter().GetResult();
+                    break;
+
             }
 
             return msg;
         }
 
        
-        [HttpGet]
-        [Route("searchByAll")]
-        public async Task<Msg> searchByAll(string keyword, int pageSize = 10, int pageNum = 1)
+        [HttpPost]
+        [Route("search")]
+        public async Task<Msg> search(SearchQueryList queryList, int rows = 10, int page = 1)
         {
             Msg msg = new Msg();
-            //判断是否为isbn
-            var tuple = Biblios.validIsbn(keyword);
-            if (tuple.Item1)
-            {
-                keyword = tuple.Item2;
-            }
-            msg =await _elastic.GetBibliosAllByText(keyword,pageSize,pageNum);
-            
+            //检索并返回
+            msg = await _elasticNest.SearchAsync(queryList, rows, page);
             return msg;
         }
     }

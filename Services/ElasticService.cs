@@ -242,6 +242,7 @@ namespace SolidarityBookCatalog.Services
                     .Index("biblios") // 替换为你的索引名称
                     .From((page - 1) * rows)                  // 分页起始位置
                     .Size(rows)                 // 每页文档数量
+                    .Sort(s=>s.Field(f=>f.Date))
                     .Query(q => q
                         .MultiMatch(m => m
                             .Query(keyword)

@@ -1,0 +1,351 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>馆藏查询</title>
+    <script src="./js/jquery-1.8.0.min.js"></script>
+    <script src="./js/handlebars.js"></script>
+    <script src="./js/tools.js"></script>
+    <style>
+        .tree {
+            margin: 20px;
+            font-family: Arial, sans-serif;
+        }
+
+            .tree ul {
+                list-style: none;
+                padding-left: 20px;
+            }
+
+            .tree li {
+                margin: 5px 0;
+            }
+
+        .tree-node {
+            cursor: pointer;
+            padding: 5px;
+            border-radius: 3px;
+        }
+
+            .tree-node:hover {
+                background-color: #f0f0f0;
+            }
+
+        .tree-icon {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            margin-right: 5px;
+            text-align: center;
+            line-height: 16px;
+        }
+
+        .collapsed ul {
+            display: none;
+        }
+
+        .selected {
+            background-color: #e6f3ff;
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            font-family: "Microsoft YaHei", Arial, sans-serif;
+            background-color: #f4f4f4;
+        }
+
+        .header {
+            background-color: #0a4c8a;
+            color: white;
+            padding: 10px 0;
+            text-align: center;
+        }
+
+            .header h1 {
+                margin: 0;
+            }
+
+        .search-button {
+            padding: 10px 20px;
+            background-color: #0a4c8a;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+            .search-button:hover {
+                background-color: #003a6c;
+            }
+
+        .search-form-container {
+            width: 60%;
+            margin: auto;
+            padding: 20px;
+            border: 2px solid grey;
+            align-content: center;
+            text-align: center;
+            justify-content: center;
+        }
+
+        .search-type {
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            margin-right: 15px;
+            background-color: #fff;
+            appearance: none; /* 移除默认外观 */
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            background-image: url('data:image/svg+xml;utf8,<svg fill="black" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5z"/><path d="M0 0h24v24H0z" fill="none"/></svg>'); /* 下拉箭头 */
+            background-repeat: no-repeat;
+            background-position: right 10px center;
+            background-size: 12px;
+            width: 100px;
+        }
+
+        .search-input {
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            margin-right: 15px;
+            width: calc(100% - 420px);
+        }
+
+        .search-button {
+            padding: 10px 20px;
+            border-radius: 4px;
+        }
+
+        .footer {
+            background-color: #333;
+            color: white;
+            text-align: center;
+            padding: 10px 0;
+        }
+
+            .footer p {
+                margin: 0;
+            }
+
+
+        .holding > div {
+            height: 24px;
+            line-height: 20px;
+            display: table-cell;
+            border: 1px solid #ddd;
+            padding: 8px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>联盟图书馆馆藏检索</h1>
+    </div>
+    <div style="display:flex;">
+        <img style="height:88px;align-content:center;justify-content:center;text-align:center;margin:auto;" src="./jpg/logleft.png" />
+        <div class="search-form-container">
+
+            <label for="search-type">检索类型:</label>
+            <select id="search-type" class="search-type">
+                <option value="identifier">ISBN</option>
+            </select>
+            <input type="text" id="search-input" value="9787503643699" class="search-input" placeholder="请输入检索内容">
+            <button id="search-button" class="search-button">搜索</button>
+
+        </div>
+        <img style="height: 88px; align-content: center; justify-content: center; text-align: center; margin: auto;" src="./jpg/logright.png" />
+    </div>
+    <div style="display:flex;margin-top:20px;">
+        <div id="libraryTree" style="width:16%;" class="tree"></div>
+        <div id="right"  style="width:80%;"></div>
+        <script id="holding-template" type="text/x-handlebars-template">
+            <div style="display:flex;text-align:center;justify-content:center;" class="holding">
+                <div style="width:0%;visibility:hidden;">id</div>
+                <div style="width:10%;"><strong>ISBN</strong></div>
+                <div style="width:10%;"><strong>所在馆书目记录号</strong></div>
+                <div style="width:20%;"><strong>所在图书馆</strong></div>
+                <div style="width:60%;"><strong>条码号</strong></div>
+                <div style="width:8%;"><strong>借阅</strong></div>
+            </div>
+            {{#each this}}
+        <div style="display:flex;" class="holding">
+            <div style="width:0%;overflow:hidden;visibility:hidden;">{{id}}</div>
+            <div style="width: 10%; ">{{identifier}}</div>
+            <div style="width: 10%; ">{{bookRecNo}}</div>
+            <div style="width: 20%; ">{{userName}}</div>
+            <div style="width: 60%; overflow:hidden;">{{barcode}}</div>
+            <div style="width: 8%; ">借阅</div>
+        </div>
+            {{/each}}
+        </script>
+    </div>
+    <div class="footer">
+        <p>版权所有 © 2024 联盟图书馆</p>
+    </div>
+    <script>
+        var gSelected = 'all';
+        var gIdentifier = "9787503643699";
+        var treeData;
+        function clearAll() {
+            gSelected = "all";
+            search(gIdentifier, gSelected);
+        }
+        $(document).ready(function () {
+            if (getURLParams()["identifier"] != null & getURLParams()["identifier"] != undefined) {
+                $("#search-input").val(getURLParams()["identifier"]);
+                gIdentifier = getURLParams()["identifier"];
+                search(gIdentifier, gSelected);
+            }
+
+
+            $('#search-button').click(function () {
+                //点击查询后，初始化变量
+                page = 1;
+                gSelected = "all";
+                gIdentifier = $("#search-input").val();
+                search(gIdentifier, gSelected);
+            });
+            // 获取图书馆成员数据
+            $.ajax({
+                url: './api/users',
+                method: 'GET',
+                success: function (response) {
+                    if (response && response.data) {
+                        treeData = JSON.parse(response.data);
+                        renderTree(treeData);
+                    }
+                },
+                error: function (error) {
+                    console.error('获取数据失败:', error);
+                    $('#libraryTree').html('<div class="error">加载失败</div>');
+                }
+            });
+            function renderTree(data) {
+                const $tree = $('#libraryTree');
+
+                const $rootUl = $('<ul>');
+                $rootUl.append('<div>选择图书馆    <span style="border-radius:10px 10px;background-color:cadetblue;padding:5px 10px 5px 10px;"onclick="clearAll()">清除选择</span></div>');
+               
+                data.forEach((province, provinceIndex) => {
+                    const $provinceLi = $('<li>');
+                    const $provinceNode = $('<div>')
+                        .addClass('tree-node')
+                        .attr('data-id', province.ProviceId)
+                        .html(`
+                                            <span class="tree-icon">▼</span>
+                                            <span>${province.ProvinceName}</span>
+                                        `);
+
+                    const $citiesUl = $('<ul>');
+
+                    province.Cities.forEach((city, cityIndex) => {
+                        const $cityLi = $('<li>');
+                        const $cityNode = $('<div>')
+                            .addClass('tree-node')
+                            .attr('data-id', city.CityId)
+                            .html(`
+                                                <span class="tree-icon">▼</span>
+                                                <span>${city.CityName}</span>
+                                            `);
+
+                        const $librariesUl = $('<ul>');
+
+                        city.Libraries.forEach(library => {
+                            const $libraryLi = $('<li>');
+                            const $libraryNode = $('<div>')
+                                .addClass('tree-node')
+                                .attr('data-id', library.LibraryId)
+                                .html(`
+                                                    <span class="tree-icon">📚</span>
+                                                    <span>${library.LibraryName}</span>
+                                                `);
+
+                            $libraryLi.append($libraryNode);
+                            $librariesUl.append($libraryLi);
+                        });
+
+                        $cityLi.append($cityNode, $librariesUl);
+                        $citiesUl.append($cityLi);
+
+                        // 如果不是第一个省份的第一个城市，折叠节点
+                        if (provinceIndex !== 0 || cityIndex !== 0) {
+                            $cityLi.addClass('collapsed');
+                            $cityNode.find('.tree-icon').text('▶');
+                        }
+                    });
+
+                    $provinceLi.append($provinceNode, $citiesUl);
+                    $rootUl.append($provinceLi);
+
+                    // 如果不是第一个省份，折叠节点
+                    if (provinceIndex !== 0) {
+                        $provinceLi.addClass('collapsed');
+                        $provinceNode.find('.tree-icon').text('▶');
+                    }
+                });
+
+                $tree.append($rootUl);
+
+                // 添加点击事件处理
+                $('.tree-node').click(function (e) {
+                    e.stopPropagation();
+
+                    // 处理选中状态
+                    $('.tree-node').removeClass('selected');
+                    $(this).addClass('selected');
+
+                    // 如果节点有子节点，切换展开/折叠状态
+                    if ($(this).next('ul').length) {
+                        $(this).parent().toggleClass('collapsed');
+                        const $icon = $(this).find('.tree-icon');
+                        $icon.text($icon.text() === '▶' ? '▼' : '▶');
+                    }
+
+                    // 获取节点ID
+                    const nodeId = $(this).data('id');
+                    console.log('选中节点ID:', nodeId);
+                    gSelected = nodeId;
+                    //选择节点后筛选
+                    search(gIdentifier, gSelected);
+                });
+
+                // 默认选中第一个省份的第一个城市的第一个图书馆
+                const $firstLibrary = $tree.find('li:first > ul > li:first > ul > li:first .tree-node');
+                if ($firstLibrary.length) {
+                    $firstLibrary.addClass('selected');
+                    //gSelected = $firstLibrary.data('id');
+                }
+            }
+        });
+        //查询馆藏
+        function search(identifier, prefix) {
+            
+            $.ajax({
+                url: './api/Holding/search?identifier=' + gIdentifier + '&prefix=' + gSelected,
+                method: 'GET',
+                success: function (response) {
+                    if (response && response.data) {
+                        //const holding = JSON.parse(response.data);
+                        // 绑定图书显示
+                        var source = document.getElementById("holding-template").innerHTML;
+                        var template = Handlebars.compile(source);
+                        var html = template(response.data);
+                        document.getElementById("right").innerHTML = html;
+                    }
+                },
+                error: function (error) {
+                    console.error('获取数据失败:', error);
+                    $('#libraryTree').html('<div class="error">加载失败</div>');
+                }
+            });
+
+
+        }
+
+    </script>
+</body>
+</html>

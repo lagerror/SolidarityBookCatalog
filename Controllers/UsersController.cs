@@ -18,7 +18,7 @@ namespace SolidarityBookCatalog.Controllers
             _userService = userService;
         }
         [HttpGet]
-        public IEnumerable<string> Get()
+        public Msg  Get()
         {
             //var indexKeysDefinition = Builders<User>.IndexKeys.Ascending(user => user.Username);
             //var indexOptions = new CreateIndexOptions { Unique = true }; // 唯一性
@@ -26,7 +26,8 @@ namespace SolidarityBookCatalog.Controllers
 
             //_userService._users.Indexes.CreateOneAsync(indexModel);
            // _userService.insert(new Models.User());
-            return new string[] { "value1", "value2" };
+            Msg msg= _userService.GroupLibAdd();
+            return msg;
         }
     }
 }

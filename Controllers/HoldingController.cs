@@ -96,6 +96,44 @@ namespace SolidarityBookCatalog.Controllers
             return msg;
         }
 
+        [HttpGet]
+        [Route("search")]
+        public ActionResult<Msg> Search(string identifier,string prefix)
+        {
+            Msg msg = new Msg();
+            try
+            {
+                var tuple = Biblios.validIsbn(identifier);
+                if (tuple.Item1)
+                {
+                    var holding = _holdingService.search(tuple.Item2,prefix);
+                    if (holding != null)
+                    {
+                        msg.Code = 0;
+                        msg.Message = "查询到馆藏";
+                        msg.Data = holding;
+                    }
+                    else
+                    {
+                        msg.Code = 1;
+                        msg.Message = "没有查询到馆藏";
+                    }
+                }
+                else
+                {
+                    msg.Code = 2;
+                    msg.Message = "isbn没有通过校验";
+                }
+            }
+            catch (Exception ex)
+            {
+                msg.Code = 100;
+                msg.Message = $"馆藏查询异常：{ex.Message}";
+            }
+
+            return msg;
+        }
+
         /// <summary>
         /// 提交各馆馆藏
         /// </summary>

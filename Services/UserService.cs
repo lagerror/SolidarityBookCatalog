@@ -1,8 +1,13 @@
-﻿using MongoDB.Driver;
+﻿using MongoDB.Bson;
+using MongoDB.Driver;
 using SolidarityBookCatalog.Models;
+using System.Collections;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
+using System.Text.Encodings.Web;
+using System.Text.Json;
+using System.Text.Unicode;
 
 namespace SolidarityBookCatalog.Services
 {
@@ -49,7 +54,55 @@ namespace SolidarityBookCatalog.Services
            
             return flag;
         }
-       
+
+        public Msg GroupLibAdd()
+        { 
+            Msg msg = new Msg();
+            // 创建投影，只选择特定的字段
+            var projection = Builders<User>.Projection
+                                                     .Include(u => u.Province)
+                                                     .Include(u => u.City)
+                                                     .Include(u => u.AppId)
+                                                     .Include(u => u.Name);
+
+            // 执行查询并获取结果
+            var users = _users.Find(new BsonDocument()).Project<User>(projection).ToList();
+
+            var groupedLibraries = users
+           .GroupBy(l => l.Province)
+               .Select(group => new
+               {
+                   ProvinceName = group.Key,
+                   ProviceId = group.First().AppId.Substring(0, group.First().AppId.IndexOf('.')),
+                   Cities = group.GroupBy(l => l.City)
+                       .Select(cityGroup => new
+                       {
+                           CityName = cityGroup.Key,
+                           CityId = cityGroup.First().AppId.Substring(0, cityGroup.First().AppId.IndexOf('.', cityGroup.First().AppId.IndexOf('.') + 1)),
+                           Libraries = cityGroup.Select(l => new
+                           {
+                               LibraryName = l.Name,
+                               LibraryId = l.AppId
+                           })
+                       })
+               });
+          
+            
+            // 将分组后的结果转换为JSON字符串
+            JsonSerializerOptions options = new JsonSerializerOptions
+            {
+                Encoder = JavaScriptEncoder.Create(UnicodeRanges.BasicLatin, UnicodeRanges.All)
+                //WriteIndented = true // 设置为true以美化输出
+            };
+            string json = JsonSerializer.Serialize(groupedLibraries,options);
+
+            msg.Code = 0;
+            msg.Data = json;
+            return msg;
+        }
+
+
+
         /// <summary>
         /// openapi调用时实现签名验证
         /// </summary>

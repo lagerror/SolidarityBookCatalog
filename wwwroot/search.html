@@ -1,0 +1,379 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>统一检索</title>
+    <script src="./js/jquery-1.8.0.min.js"></script>
+    <script src="./js/handlebars.js"></script>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            font-family: "Microsoft YaHei", Arial, sans-serif;
+            background-color: #f4f4f4;
+        }
+
+        .header {
+            background-color: #0a4c8a;
+            color: white;
+            padding: 10px 0;
+            text-align: center;
+        }
+
+            .header h1 {
+                margin: 0;
+            }
+
+        .container {
+            width: 80%;
+            margin: auto;
+            align-content: center;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            padding: 20px;
+        }
+
+        .search-button {
+            padding: 10px 20px;
+            background-color: #0a4c8a;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+            .search-button:hover {
+                background-color: #003a6c;
+            }
+
+        .search-form-container {
+            width: 60%;
+            margin: auto;
+            padding: 20px;
+            border: 2px solid grey;
+            align-content: center;
+            text-align: center;
+            justify-content: center;
+        }
+
+        .search-type {
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            margin-right: 15px;
+            background-color: #fff;
+            appearance: none; /* 移除默认外观 */
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            background-image: url('data:image/svg+xml;utf8,<svg fill="black" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5z"/><path d="M0 0h24v24H0z" fill="none"/></svg>'); /* 下拉箭头 */
+            background-repeat: no-repeat;
+            background-position: right 10px center;
+            background-size: 12px;
+            width: 100px;
+        }
+
+        .search-input {
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            margin-right: 15px;
+            width: calc(100% - 420px);
+        }
+
+        .search-button {
+            padding: 10px 20px;
+            border-radius: 4px;
+        }
+
+        .sidebar {
+            flex-basis: 20%;
+            background-color: #f9f9f9;
+            padding: 15px;
+            margin-right: 20px;
+        }
+
+        .main-content {
+            flex-basis: 75%;
+        }
+
+        .item {
+            background-color: #fff;
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+
+        .footer {
+            background-color: #333;
+            color: white;
+            text-align: center;
+            padding: 10px 0;
+        }
+
+            .footer p {
+                margin: 0;
+            }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>联盟图书馆书目检索</h1>
+    </div>
+    <div style="display:flex;">
+        <img style="height:88px;align-content:center;justify-content:center;text-align:center;margin:auto;" src="./jpg/logleft.png" />
+        <!-- 搜索表单容器 -->
+        <div class="search-form-container">
+            <label for="search-type">检索类型:</label>
+            <select id="search-type" class="search-type">
+                <option value="title">题名</option>
+                <option value="creator">作者</option>
+                <option value="publisher">出版社</option>
+                <option value="identifier">ISBN</option>
+                <option value="topic">主题</option>
+            </select>
+
+            <input type="text" id="search-input" value="人工智能" class="search-input" placeholder="请输入检索内容">
+            <button id="search-button" class="search-button">搜索</button>
+        </div>
+        <img style="height: 88px; align-content: center; justify-content: center; text-align: center; margin: auto;" src="./jpg/logright.png" />
+    </div>
+
+
+    <div class="container">
+        <div class="sidebar" id="sidebar">
+            <div>聚类条件 <button value="" onclick="clearSelect()">清除条件</button></div>
+            <div id="publisher-container-wrap">
+                <h3>出版社</h3>
+                <div id="publisher-container"></div>
+            </div>
+            <!-- Handlebars 模板 -->
+            <script id="publisher-template" type="text/x-handlebars-template">
+                {{#each this}}
+                <div>
+                    <input type="radio" id="publisher-{{@key}}" name="publisher" value="{{@key}}">
+                    <label for="publisher-{{@key}}">{{@key}}({{this}})</label>
+                </div>
+                {{/each}}
+            </script>
+
+
+            <div id="year-container-wrap">
+                <h3>出版年</h3>
+                <div id="year-container">
+                </div>
+            </div>
+
+            <script id="year-template" type="text/x-handlebars-template">
+                {{#each this}}
+                <div>
+                    <input type="radio" id="year-{{@key}}" name="year" value="{{@key}}">
+                    <label for="year-{{@key}}">{{@key}}({{this}})</label>
+                </div>
+                {{/each}}
+            </script>
+        </div>
+        <div class="main-content" id="main-content">
+            <div id="books-container"></div>
+            <script id="book-template" type="text/x-handlebars-template">
+                <div class="books">
+                    {{#each this}}
+                    <div class="book">
+                        <div style="display: flex; justify-content: space-between; align-items: center; width:100%; height:32px; line-height:28px; color:#0a4c8a; border:solid 2px grey; border-radius:10px; font-size:16px; padding: 0 5px;">
+                            <div style="text-align: left;"><strong>题名：</strong>{{title}}；<strong>作者:</strong> {{creator}}</div>
+                            <span style="margin-left: auto;background-color:cadetblue;color:white;margin:5px;border-radius:5px;padding:0 15px 0 15px;" onclick="openOrFocusPage({{identifier}})">点击查询所在图书馆</span>
+                        </div>
+                        <div style="padding: 10px; margin-bottom:20px;">
+                            <div style="display:flex;">
+                                <div><img style="width:120px;" src="https://www.bookcovers.cn/index.php?client=yangtzeu&isbn={{identifier}}/cover" /></div>
+                                <div style="line-height:28px;margin-left:20px;">
+                                    <strong>出版社:</strong> {{publisher}};<br />
+                                    <strong>出版日期:</strong> {{date}}; <br />
+                                    <strong>ISBN:</strong> {{identifier}}；<br />
+                                    <strong>价格:</strong> {{price}}；<br />
+                                    <strong>页码:</strong> {{coverage}};<br />
+                                    <strong>分类：</strong>{{relation}};<br />
+                                </div>
+                            </div>
+                            <div><strong>描述:</strong> {{description}}</div>
+                        </div>
+                    </div>
+                    {{/each}}
+                </div>
+            </script>
+            <div id="pagination" style="display: flex; justify-content: space-between; align-items: center; height: 40px; line-height: 30px; width: 80%; border: solid 2px grey; text-align: center; margin: auto;border-radius:10px 10px;">
+                <div id="prev-page" onclick="prevPage()" style="margin-left:30px;border-radius:20px;color:white;background-color:cadetblue;text-align:center;width:120px;">上一页</div>
+                <div id="page-info" style="border-radius:20px;color:white;background-color:cadetblue;text-align:center;width:220px;">第1页/总100页</div>
+                <div id="next-page" onclick="nextPage()" style="margin-right:30px;border-radius:20px;color:white;background-color:cadetblue;text-align:center;width:120px;">下一页</div>
+            </div>
+        </div>
+    </div>
+    <div class="footer">
+        <p>版权所有 © 2024 联盟图书馆</p>
+    </div>
+</body>
+</html>
+
+<script>
+    var selectedYear = null;
+    var selectedPublisher = null;
+    var rows = 10;
+    var page = 1;
+    var total = 100;
+    search();
+    var openedWindow = null;
+    function openOrFocusPage(identifier) {
+        // 检查窗口是否已经打开
+        //if (openedWindow && !openedWindow.closed) {
+            // 如果已经打开，则聚焦到该窗口
+           // openedWindow.focus();
+        //} else {
+            // 如果没有打开，则打开新窗口并存储引用
+            openedWindow = window.open('holding.html?identifier=' + identifier, '_blank');
+       // }
+    }
+
+    $(document).ready(function () {
+        $('#search-button').click(function () {
+            //点击查询后，初始化变量
+            page = 1;
+            search();
+        });
+    });
+    //组合检索条件后检索并绑定到前端
+    function search()
+    {
+            var searchType = $('#search-type').val();
+            var searchInput = $('#search-input').val();
+
+            // 在这里可以添加验证输入的逻辑
+            var searchData = {
+                "list": [
+                    {
+                        "field": searchType,
+                        "keyword": searchInput
+                    }
+                ]
+            };
+
+            // 选择出版年
+            if (selectedYear != null) {
+                var newSearchCondition = {
+                    "field": "year",
+                    "keyword": selectedYear,
+                    "logic": "and"
+                };
+                searchData.list.push(newSearchCondition);
+            }
+            // 选择出版社
+            if (selectedPublisher != null) {
+                var newSearchCondition = {
+                    "field": "publisher",
+                    "keyword": selectedPublisher,
+                    "logic": "and"
+                };
+                searchData.list.push(newSearchCondition);
+            }
+
+
+            // 提交数据到服务器
+            $.ajax({
+                type: 'POST',
+                url: './api/Elastic/search?rows='+rows+'&page='+page,
+                contentType: 'application/json', // 指定发送内容类型为 JSON
+                data: JSON.stringify(searchData), // 将 JavaScript 对象转换为 JSON 字符串
+                success: function (response) {
+                    // 处理服务器响应的数据
+                    total = response.data.total;
+                    infoPage();
+                    // 绑定图书显示
+                    var source = document.getElementById("book-template").innerHTML;
+                    var template = Handlebars.compile(source);
+                    var html = template(response.data.rows);
+                    document.getElementById("books-container").innerHTML = html;
+
+                    // 绑定出版社聚合显示
+                    var source = document.getElementById('publisher-template').innerHTML;
+                    var template = Handlebars.compile(source);
+                    var html = template(response.data.aggPublisher);
+                    document.getElementById('publisher-container').innerHTML = html;
+                    // 获取所有的 radio 按钮并添加事件监听器
+                    var radioButtons = document.querySelectorAll('input[type="radio"][name="publisher"]');
+
+                    radioButtons.forEach(function (radio) {
+                        radio.addEventListener('change', function (event) {
+                            if (event.target.checked) {
+                                selectedPublisher = event.target.value;
+                                console.log('选中的出版社是:', selectedPublisher);
+                                // 这里可以执行你需要的操作
+                                page = 1;
+                                search();
+                            }
+                        });
+                    });
+
+                    // 绑定年聚合显示
+                    var source = document.getElementById('year-template').innerHTML;
+                    var template = Handlebars.compile(source);
+                    var html = template(response.data.aggYear);
+                    document.getElementById('year-container').innerHTML = html;
+                    // 获取所有的 radio 按钮并添加事件监听器
+                    var radioButtons = document.querySelectorAll('input[type="radio"][name="year"]');
+
+                    radioButtons.forEach(function (radio) {
+                        radio.addEventListener('change', function (event) {
+                            if (event.target.checked) {
+                                selectedYear = event.target.value;
+                                console.log('选中的出版年是:', selectedYear);
+                                page = 1;
+                                // 这里可以执行你需要的操作
+                                search();
+                            }
+                        });
+                    });
+
+
+                },
+                error: function (xhr, status, error) {
+                    // 处理错误情况
+                    console.error("An error occurred: " + error);
+                }
+            });
+
+    }
+    //清除限定条件
+    function clearSelect() {
+        selectedYear = null;
+        selectedPublisher = null;
+        page = 1;
+        search();
+    }
+    //翻页
+    function prevPage()
+    {
+        if (page > 1) {
+            page--;
+            search();
+        } else if (page < 1) {
+            page = 1;
+        }
+        infoPage();
+    }
+    function nextPage()
+    {
+        if (page < 100 & page<total/rows) {
+            page++;
+            search();
+        }
+        infoPage();
+    }
+    function infoPage()
+    {
+        $("#page-info").html('第' + page + "页/总" + Math.round(total / rows) + "页");
+    }
+</script>
+
+
+
