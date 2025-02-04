@@ -15,9 +15,8 @@ namespace SolidarityBookCatalog.Services
         private readonly IHttpClientFactory httpClientFactory;
         public readonly string _url;
 
-        public BibliosService(IConfiguration config, IHttpClientFactory httpClientFactory)
+        public BibliosService(IConfiguration config, IHttpClientFactory httpClientFactory, IMongoClient client)
         {
-            var client = new MongoClient(config.GetConnectionString("BookDb"));
             var database = client.GetDatabase("BookReShare");
             _books = database.GetCollection<Biblios>("biblios");
             _url = config["91Marc:url"].ToString();

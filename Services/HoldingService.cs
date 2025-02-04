@@ -8,9 +8,9 @@ namespace SolidarityBookCatalog.Services
     {
         public readonly IMongoCollection<Holding> _holdings;
 
-        public HoldingService(IConfiguration config)
+        public HoldingService(IConfiguration config, IMongoClient client)
         {
-            var client = new MongoClient(config.GetConnectionString("BookDb"));
+          
             var database = client.GetDatabase("BookReShare");
             _holdings = database.GetCollection<Holding>("holding");
         }

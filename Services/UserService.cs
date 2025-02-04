@@ -17,9 +17,8 @@ namespace SolidarityBookCatalog.Services
         public readonly IMongoCollection<Biblios> _books;
         public readonly IMongoCollection<Holding> _holdings;
       
-        public UserService(IConfiguration config)
+        public UserService(IConfiguration config, IMongoClient client)
         {
-            var client = new MongoClient(config.GetConnectionString("BookDb"));
             var database = client.GetDatabase("BookReShare");
             _users = database.GetCollection<User>("user");
             _books = database.GetCollection<Biblios>("biblios");

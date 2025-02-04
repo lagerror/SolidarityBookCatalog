@@ -1,4 +1,5 @@
 using Microsoft.OpenApi.Models;
+using MongoDB.Driver;
 using SolidarityBookCatalog.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -14,11 +15,11 @@ builder.Services.AddSwaggerGen(c =>
 });
 //自定义服务，便于注入
 builder.Services.AddHttpClient();
-builder.Services.AddSingleton<BibliosService>();
-builder.Services.AddSingleton<UserService>();
-builder.Services.AddSingleton<HoldingService>();
 builder.Services.AddSingleton<ElasticService>();
 builder.Services.AddSingleton<ElasticNestService>();
+
+var client = new MongoClient(builder.Configuration.GetValue<string>("ConnectionStrings:BookDb"));
+builder.Services.AddSingleton<IMongoClient>(client);
 
 var app = builder.Build();
 // Configure the HTTP request pipeline.

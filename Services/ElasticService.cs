@@ -18,14 +18,13 @@ namespace SolidarityBookCatalog.Services
     {
         private readonly ElasticsearchClient _elastic;
         public readonly IMongoCollection<Biblios> _books;
-        public ElasticService(IConfiguration config)
+        public ElasticService(IConfiguration config, IMongoClient client)
         {
             string connStr = config.GetConnectionString("ElasticSearchDB").ToString();
             var settings = new ElasticsearchClientSettings(new Uri(connStr));
             settings.DefaultIndex("biblios");
             _elastic = new ElasticsearchClient(settings);
-
-            var client = new MongoClient(config.GetConnectionString("BookDb"));
+           
             var database = client.GetDatabase("BookReShare");
             _books = database.GetCollection<Biblios>("biblios");
         }

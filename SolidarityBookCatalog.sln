@@ -5,12 +5,6 @@ VisualStudioVersion = 17.11.35327.3
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SolidarityBookCatalog", "SolidarityBookCatalog.csproj", "{DB4DC825-68DE-4740-8EA5-AEDAA5E50901}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DataImport", "..\DataImport\DataImport.csproj", "{66B240BD-9F7C-4DAF-8103-82383927D3BB}"
-EndProject
-Project("{54A90642-561A-4BB1-A94E-469ADEE60C69}") = "vueproject3", "..\vueproject3\vueproject3.esproj", "{95E63CCE-CD30-434F-888E-3D9EF304B311}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PackageLocker", "..\PackageLocker\PackageLocker.csproj", "{48C55094-BF14-4DCF-9B43-5A0ECFAE9148}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,20 +15,6 @@ Global
 		{DB4DC825-68DE-4740-8EA5-AEDAA5E50901}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{DB4DC825-68DE-4740-8EA5-AEDAA5E50901}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{DB4DC825-68DE-4740-8EA5-AEDAA5E50901}.Release|Any CPU.Build.0 = Release|Any CPU
-		{66B240BD-9F7C-4DAF-8103-82383927D3BB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{66B240BD-9F7C-4DAF-8103-82383927D3BB}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{66B240BD-9F7C-4DAF-8103-82383927D3BB}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{66B240BD-9F7C-4DAF-8103-82383927D3BB}.Release|Any CPU.Build.0 = Release|Any CPU
-		{95E63CCE-CD30-434F-888E-3D9EF304B311}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{95E63CCE-CD30-434F-888E-3D9EF304B311}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{95E63CCE-CD30-434F-888E-3D9EF304B311}.Debug|Any CPU.Deploy.0 = Debug|Any CPU
-		{95E63CCE-CD30-434F-888E-3D9EF304B311}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{95E63CCE-CD30-434F-888E-3D9EF304B311}.Release|Any CPU.Build.0 = Release|Any CPU
-		{95E63CCE-CD30-434F-888E-3D9EF304B311}.Release|Any CPU.Deploy.0 = Release|Any CPU
-		{48C55094-BF14-4DCF-9B43-5A0ECFAE9148}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{48C55094-BF14-4DCF-9B43-5A0ECFAE9148}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{48C55094-BF14-4DCF-9B43-5A0ECFAE9148}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{48C55094-BF14-4DCF-9B43-5A0ECFAE9148}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
