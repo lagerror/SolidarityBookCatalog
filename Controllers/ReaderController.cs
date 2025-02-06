@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Identity;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using MongoDB.Driver;
 using SolidarityBookCatalog.Models;
@@ -106,6 +107,7 @@ namespace SolidarityBookCatalog.Controllers
 
         // PUT api/readers/5
         [HttpPost]
+        [Authorize(Policy = "AdminOrManager")]
         [Route("update")]
         public async Task<IActionResult> update(string openid, [FromBody] Reader updateReader)
         {
@@ -174,6 +176,7 @@ namespace SolidarityBookCatalog.Controllers
 
         // DELETE api/readers/5
         [HttpGet]
+        [Authorize(Policy = "AdminOrManager")]
         [Route("delete")]
         public async Task<IActionResult> Delete(string openid)
         {

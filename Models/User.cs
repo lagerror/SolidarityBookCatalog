@@ -56,6 +56,10 @@ namespace SolidarityBookCatalog.Models
         //rsa2048私钥
         [BsonElement("privatePem")]
         public string? PrivatePem { get; set; }
+        //手机号，便于联系
+        [BsonElement("mobilePhone")]
+        public string? MobilePhone { get; set; }
+
     }
     //用户登录model
     public class UserDTOLogin { 

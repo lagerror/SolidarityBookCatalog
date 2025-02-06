@@ -7,10 +7,20 @@ using SolidarityBookCatalog.Services;
 using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Text;
+using Serilog;
+using Serilog.Context;
+using Serilog.Sinks.MongoDB;
+using System.Security.Principal;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// 配置Serilog
+Log.Logger = new LoggerConfiguration()
+    .ReadFrom.Configuration(builder.Configuration)
+   
+    .CreateLogger();
 
+builder.Host.UseSerilog(); // 使用Serilog作为日志提供者
 
 // 添加身份验证服务并配置 JWT Bearer 认证
 builder.Services.AddAuthentication(options =>
@@ -30,33 +40,6 @@ builder.Services.AddAuthentication(options =>
         ValidateIssuerSigningKey = true,
         IssuerSigningKey = new RsaSecurityKey(GetRsaPublicKey()) // 使用公钥验证
     };
-
-    //options.Events = new JwtBearerEvents   //因为包的兼容性，删除Microsoft.IdentityModel.Tokens包即可
-    //{
-    //    OnAuthenticationFailed = context =>
-    //    {
-    //        // 获取请求中的 Authorization 头
-    //        var authorizationHeader = context.Request.Headers["Authorization"];
-
-    //        // 打印或记录整个 Authorization 头
-    //        // 注意：这可能包含敏感信息，确保只在安全的环境中这样做
-    //        Console.WriteLine("Authorization Header: " + authorizationHeader);
-
-    //        Console.WriteLine("Authentication failed: " + context.Exception.Message);
-    //        return Task.CompletedTask;
-    //    },
-    //    OnTokenValidated = context =>
-    //    {
-    //        // 获取请求中的 Authorization 头
-    //        var authorizationHeader = context.Request.Headers["Authorization"];
-
-    //        // 打印或记录整个 Authorization 头
-    //        // 注意：这可能包含敏感信息，确保只在安全的环境中这样做
-    //        Console.WriteLine("Authorization Header: " + authorizationHeader);
-    //        Console.WriteLine("Token validated successfully.");
-    //        return Task.CompletedTask;
-    //    }
-    //};
 });
 
 // 添加授权策略
@@ -88,14 +71,29 @@ builder.Services.AddSingleton<IMongoClient>(client);
 var app = builder.Build();
 
 // 配置 HTTP 请求管道
-app.UseSwagger();
-app.UseSwaggerUI(c =>
+if (app.Environment.IsDevelopment())
 {
-    c.SwaggerEndpoint($"v1/swagger.json", "图书馆共建图书目录测试");
-});
+    app.UseSwagger();
+    app.UseSwaggerUI(c =>
+    {
+        c.SwaggerEndpoint($"v1/swagger.json", "图书馆共建图书目录测试");
+    });
+}
 
 app.UseStaticFiles();
+
+//注意以下三者顺序
 app.UseAuthentication();
+// 添加日志上下文Enricher
+app.Use(async (context, next) =>
+{
+    LogContext.PushProperty("IP", context.Connection.RemoteIpAddress?.ToString());
+    LogContext.PushProperty("User", context.User.Identity.Name ?? "Anonymous");
+    await next();
+});
+// 使用 Serilog 替换默认的日志系统
+app.UseSerilogRequestLogging();
+
 app.UseAuthorization();
 
 app.MapControllers();
