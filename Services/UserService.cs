@@ -30,19 +30,23 @@ namespace SolidarityBookCatalog.Services
             string privateKey;
             using (var rsa = new RSACryptoServiceProvider(2048)) // 2048位密钥长度
             {
+                // 导出公钥
+                var publicPem = rsa.ExportSubjectPublicKeyInfoPem(); // PEM 格式的公钥
+                var privatePem = rsa.ExportPkcs8PrivateKeyPem(); // PEM 格式的私钥
+
                 publicKey = rsa.ToXmlString(false); // 公钥
                 privateKey = rsa.ToXmlString(true); // 私钥
             }
             user = new User
             {
-                Username = "lib.hbzyy.edu.cn",
+                Username = "jwtToken",
                 Password = "thisistest",
                 Province = "湖北",
                 City = "荆州",
-                AppKey = "F6lTaUmz9w7a8X5w",
-                AppId = "hubei.jingzhou.hbzyy.library",
-                Name = "湖北中医药高等专科学院",
-                Chmod = "FF",
+                AppKey = "7a8F6lTaUmz9wX5w",
+                AppId = "hubei.jingzhou.yangtzeu.jwtToken",
+                Name = "第三方TOKEN管理专用账号",
+                Chmod = "FFFF",
                 PublicKey = publicKey,
                 PrivateKey = privateKey,
             };
@@ -100,6 +104,20 @@ namespace SolidarityBookCatalog.Services
             return msg;
         }
 
+        //获取tokenPrivateKey
+        public  string getTokenPrivateKey(string type)
+        {
+            string privateKey;
+            if (type == "pem")
+            {
+                privateKey = _users.Find(x => x.Username == "jwtToken").FirstOrDefault().PrivatePem;
+            }
+            else
+            {
+                privateKey = _users.Find(x => x.Username == "jwtToken").FirstOrDefault().PrivateKey;
+            }
+            return privateKey;
+        }
 
 
         /// <summary>

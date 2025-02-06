@@ -1,4 +1,5 @@
-﻿using MongoDB.Bson;
+﻿using Elastic.Clients.Elasticsearch;
+using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 
 namespace SolidarityBookCatalog.Models
@@ -48,6 +49,18 @@ namespace SolidarityBookCatalog.Models
         //rsa2048私钥
         [BsonElement("privateKey")]
         public string? PrivateKey { get; set; }
+
+        //rsa2048公钥
+        [BsonElement("publicPem")]
+        public string? PublicPem { get; set; }
+        //rsa2048私钥
+        [BsonElement("privatePem")]
+        public string? PrivatePem { get; set; }
+    }
+    //用户登录model
+    public class UserDTOLogin { 
+        public string username {  get; set; } 
+        public string password { get; set; }    
     }
 }
 

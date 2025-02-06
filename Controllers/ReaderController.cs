@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
 using MongoDB.Driver;
 using SolidarityBookCatalog.Models;
 
@@ -19,6 +20,7 @@ namespace SolidarityBookCatalog.Controllers
        
         //功能测试
         [HttpGet]
+        [Route("fun")]
         public async Task<IActionResult> Fun(string act)
         {
             Msg msg = new Msg();
@@ -67,7 +69,8 @@ namespace SolidarityBookCatalog.Controllers
 
         // POST api/<ReaderController>
         [HttpPost]
-        public async Task<IActionResult> Post([FromBody] CreateReaderDto dto)
+        [Route("insert")]
+        public async Task<IActionResult> insert([FromBody] CreateReaderDto dto)
         {
             var reader = new Reader
             {
@@ -75,7 +78,7 @@ namespace SolidarityBookCatalog.Controllers
                 Name = dto.Name,
                 StudentId = dto.StudentId,
                 Phone = dto.Phone,
-                Age = dto.Age,
+                BirthYear = dto.BirthYear,
                 Type = dto.Type,
                 Library = dto.Library,
                 Area=dto.Area,
@@ -102,42 +105,98 @@ namespace SolidarityBookCatalog.Controllers
         }
 
         // PUT api/readers/5
-        [HttpPost("{openid}")]
+        [HttpPost]
         [Route("update")]
-        public async Task<IActionResult> update(string openid, [FromBody] Reader reader)
+        public async Task<IActionResult> update(string openid, [FromBody] Reader updateReader)
         {
-            var msg = new Msg();
-            if (openid != reader.OpenId)
+           
+            Msg msg = new Msg();
+            
+            var updateDefinitionBuilder = Builders<Reader>.Update;
+            var updates = new List<UpdateDefinition<Reader>>();
+            try
             {
-                msg.Code = 1;
-                msg.Message = "没找到对应记录";
-                return BadRequest(msg);
+                // 根据字段是否为 null 构建更新定义，应该使用反射的循环
+                var properties = updateReader.GetType().GetProperties();
+                foreach (var property in properties)
+                {
+                    //不能更改的字段
+                    if (property.Name == "OpenId" || property.Name == "Id")
+                    {
+                        continue;
+                    }
+                    //更新非空字段
+                    var value = property.GetValue(updateReader, null);
+                    if (property.PropertyType == typeof(string) && !string.IsNullOrEmpty((string)value))
+                    {
+                        updates.Add(updateDefinitionBuilder.Set(property.Name, value));
+                    }
+                    else if (property.PropertyType != typeof(string) && value != null)
+                    {
+                        updates.Add(updateDefinitionBuilder.Set(property.Name, value));
+                    }
+                }
+                // 将所有更新定义组合成一个更新定义
+                var combinedUpdateDefinition = updateDefinitionBuilder.Combine(updates);
+
+                // 如果没有需要更新的字段，直接返回
+                if (updates.Count > 0)
+                {
+                    var updateDefinition = updateDefinitionBuilder.Combine(updates);
+                    var filter = Builders<Reader>.Filter.Eq(b => b.OpenId, openid);
+                    var result =await _readers.UpdateOneAsync(filter, updateDefinition);
+
+                    if (result.IsAcknowledged && result.ModifiedCount>0 )
+                    {
+                        msg.Code = 0;
+                        msg.Message = $"update:成功更新{openid}";
+                    }
+                    else
+                    {
+                        msg.Code = 1;
+                        msg.Message = $"update:更新失败 {result.ModifiedCount.ToString()}";
+                    }
+                }
+                else
+                {
+                    msg.Code = 2;
+                    msg.Message = $"update: 没有对应更新字段";
+                }
+            }
+            catch (Exception ex)
+            {
+                msg.Code = 100;
+                msg.Message = ex.Message;
             }
 
-            var result = await _readers.ReplaceOneAsync(r => r.OpenId == openid, reader);
-            if (result.MatchedCount == 0)
-            {
-                msg.Code = 2;
-                msg.Message = "没找到对应记录";
-                return BadRequest(msg);
-            }
-            msg.Code = 0;
             return Ok(msg);
         }
 
         // DELETE api/readers/5
-        [HttpPost("{openid}")]
+        [HttpGet]
+        [Route("delete")]
         public async Task<IActionResult> Delete(string openid)
         {
             var msg = new Msg();
-            var result = await _readers.DeleteOneAsync(r => r.OpenId == openid);
-            if (result.DeletedCount == 0)
+            try
             {
-                msg.Code= 1;
-                msg.Message = "没有删除成功";
-                return BadRequest(msg);
+                var result = await _readers.DeleteOneAsync(r => r.OpenId == openid);
+
+                if (result.DeletedCount == 1)
+                {
+                    msg.Code = 0;
+                    msg.Message = "删除成功";
+                }
+                else
+                {
+                    msg.Code = 1;
+                    msg.Message = "删除失败";
+                }
             }
-            msg.Code = 0;
+            catch (Exception ex) { 
+                msg.Code = 100;
+                msg.Message = ex.Message;   
+            }
             return Ok(msg);
         }
     }

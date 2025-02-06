@@ -2,6 +2,7 @@
 using System.ComponentModel.DataAnnotations;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
+using SolidarityBookCatalog.Services;
 
 namespace SolidarityBookCatalog.Models
 {
@@ -22,9 +23,9 @@ namespace SolidarityBookCatalog.Models
         [Required]
         public string StudentId { get; set; }
         //读者类型，教工，博士，硕士，本科，初高中，儿童，其它
-        public string? Type { set; get; }
+        public PublicEnum.Type? Type { set; get; }
         //年龄
-        public int? Age { get; set; }
+        public int? BirthYear { get; set; }
         //手机号
         [Required]
         [RegularExpression(@"^1[3-9]\d{9}$")]
@@ -46,7 +47,7 @@ namespace SolidarityBookCatalog.Models
         //身份证后六位，便于审核员在本地图书馆管理系统中确认注册者的身份，不作登录使用，登录强制使用微信扫码
         public string? Password { get; set; } // 
         //是否有效
-        public bool? IsValid { get; set; }
+        public bool? IsValid { get; set; } = false;
     }
 
     // DTO 用于创建请求
@@ -61,9 +62,9 @@ namespace SolidarityBookCatalog.Models
         [Required]
         public string StudentId { get; set; }
        
-        public string? Type { set; get; }
+        public PublicEnum.Type? Type { set; get; }
        
-        public int? Age { get; set; }
+        public int? BirthYear { get; set; }
 
         [Required]
         public string Phone { get; set; }
