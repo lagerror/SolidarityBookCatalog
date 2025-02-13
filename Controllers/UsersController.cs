@@ -152,7 +152,7 @@ namespace SolidarityBookCatalog.Controllers
                 var claims = new[]
                     {
                     new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-                    new Claim(ClaimTypes.Name, user.Username),
+                    new Claim(ClaimTypes.Name, user?.Username),
                     new Claim(ClaimTypes.MobilePhone,user.MobilePhone??"没有录入手机号"),
                     new Claim(ClaimTypes.Role, "manager")
                 };
@@ -170,7 +170,12 @@ namespace SolidarityBookCatalog.Controllers
                 //
                 msg.Code = 0;
                 msg.Message = $"{login.username}成功获取管理token";
-                msg.Data = tokenStr;
+                msg.Data = new
+                {
+                    token = tokenStr,
+                    expire= DateTime.UtcNow.AddMinutes(300),
+                    name= user?.Username
+                };
             }
             catch (Exception ex)
             {
