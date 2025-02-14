@@ -80,6 +80,25 @@ namespace SolidarityBookCatalog.Services
             // 返回解密后的文本
             return plaintext;
         }
+       //微信加密
+        public static string WeChatSign(string[] data)
+        {
+            //排序
+            Array.Sort(data);
+            //拼接
+            string temp = string.Join("", data);
 
+            // 3. 使用SHA1加密
+            var result = new StringBuilder();
+            using (var sha1 = SHA1.Create())
+            {
+                var bytes = sha1.ComputeHash(Encoding.UTF8.GetBytes(temp.ToString()));
+                foreach (var b in bytes)
+                {
+                    result.Append(b.ToString("x2"));
+                }
+            }
+            return result.ToString().ToLowerInvariant(); //.ToUpperInvariant();
+        }
     }
 }

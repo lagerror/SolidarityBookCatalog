@@ -68,7 +68,7 @@ namespace SolidarityBookCatalog.Services
             }
 
             // 使用信号量确保只有一个线程能执行刷新操作
-            await _semaphore.WaitAsync();
+            //await _semaphore.WaitAsync();
             try
             {
                 // 再次检查缓存，防止其他线程已经刷新
@@ -96,7 +96,7 @@ namespace SolidarityBookCatalog.Services
             }
             finally
             {
-                _semaphore.Release();
+                //_semaphore.Release();
             }
         }
 
@@ -112,7 +112,7 @@ namespace SolidarityBookCatalog.Services
             }
 
             // 使用信号量确保只有一个线程能执行刷新操作,导致死锁，没有超时退出机制
-            await _semaphore.WaitAsync(1000);
+            //await _semaphore.WaitAsync(1000);
             try
             {
                 // 再次检查缓存，防止其他线程已经刷新
@@ -152,7 +152,7 @@ namespace SolidarityBookCatalog.Services
             }
             finally
             {
-                _semaphore.Release();
+                //_semaphore.Release();
             }
         }
         

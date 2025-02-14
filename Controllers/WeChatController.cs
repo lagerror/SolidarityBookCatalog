@@ -17,9 +17,19 @@ namespace SolidarityBookCatalog.Controllers
             _configuration = configuration;
             _weChatTokenService = weChatTokenService;
         }
-
+        [HttpGet]
+        public string Get(string echoStr, string signature, string timestamp, string nonce)
+        {
+            Console.WriteLine("{0},{1},{2},{3}", echoStr, signature, timestamp, nonce);
+            string token = _weChatTokenService.GetTokenAsync().Result;
+            string[] data = new string[] { nonce, timestamp, token };
+            var temp = Tools.WeChatSign(data);
+            Console.WriteLine(temp);
+            return echoStr;
+        }
         // GET: api/<WeChatController>
         [HttpGet]
+        [Route("fun")]
         public async Task<IActionResult> Fun(string act,string pars)
         {
             Msg msg = new Msg();
@@ -60,13 +70,14 @@ namespace SolidarityBookCatalog.Controllers
         [Route("oauth")]
         public async  Task<IActionResult> oauth(string code, string state)
         {
-            
+            Console.WriteLine($"code:{code};state:{state}");    
             string openid = await _weChatTokenService.GetOpenIdByCodeAsync(code);
-            string ticket = await _weChatTokenService.GetJsapiTicketAsync();
-            string token=await _weChatTokenService.GetTokenAsync();
-            string cryptOpenId= Tools.EncryptStringToBytes_Aes(openid, _configuration["Crypt:Key"], _configuration["Crypt:iv"]);
-            string jsApiSign = await _weChatTokenService.GetJsapiSignature(cryptOpenId);
-            Console.WriteLine($"code:{code};state:{state};openid:{openid};token:{token};jsapisign:{jsApiSign}");
+            return Redirect($"https://reader.yangtzeu.edu.cn/solidarity/reader.html?pars={openid}");
+            //string ticket = await _weChatTokenService.GetJsapiTicketAsync();
+            //string token=await _weChatTokenService.GetTokenAsync();
+            //string cryptOpenId= Tools.EncryptStringToBytes_Aes(openid, _configuration["Crypt:Key"], _configuration["Crypt:iv"]);
+            //string jsApiSign = await _weChatTokenService.GetJsapiSignature(cryptOpenId);
+            //Console.WriteLine($"code:{code};state:{state};openid:{openid};token:{token};jsapisign:{jsApiSign}");
             return Ok();
         }
 
