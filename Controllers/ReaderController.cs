@@ -22,7 +22,7 @@ namespace SolidarityBookCatalog.Controllers
         //功能测试
         [HttpGet]
         [Route("fun")]
-        public async Task<IActionResult> Fun(string act)
+        public async Task<IActionResult> Fun(string act,string pars)
         {
             Msg msg = new Msg();
             switch (act)
@@ -107,7 +107,7 @@ namespace SolidarityBookCatalog.Controllers
 
         // PUT api/readers/5
         [HttpPost]
-        [Authorize(Policy = "AdminOrManager")]
+        [Authorize(Policy = "ManagerOrReader")]
         [Route("update")]
         public async Task<IActionResult> update(string openid, [FromBody] Reader updateReader)
         {

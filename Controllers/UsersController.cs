@@ -12,6 +12,11 @@ using System.Text;
 using Microsoft.AspNetCore.DataProtection.KeyManagement;
 using Elastic.Clients.Elasticsearch;
 using Serilog;
+using System.Text.RegularExpressions;
+using MongoDB.Bson;
+using Elastic.Clients.Elasticsearch.Security;
+using User = SolidarityBookCatalog.Models.User;
+using Microsoft.VisualBasic;
 
 // For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
 
@@ -83,6 +88,72 @@ namespace SolidarityBookCatalog.Controllers
             Msg msg= _userService.GroupLibAdd();
             return msg;
         }
+        [HttpPost]
+        [Route("search")]
+        [Authorize(Policy = "AdminOrManager")]
+        public async Task<IActionResult> SearchAsync(SearchQueryList list, int rows = 10, int page = 1)
+        {
+            Msg msg = new Msg();
+
+            var filterBuilder = Builders<User>.Filter;
+            var filters = new List<FilterDefinition<User>>();
+            foreach (var item in list.List)
+            {
+                if (item.Field == "username")
+                {
+                    filters.Add(filterBuilder.Eq(x => x.Username, item.Keyword));
+                }
+                else if(item.Field == "province")
+                {
+                    filters.Add(filterBuilder.Eq(x => x.Province, item.Keyword));
+                }
+                else if (item.Field == "city")
+                {
+                    filters.Add(filterBuilder.Eq(x => x.City, item.Keyword));
+                }
+                else if (item.Field == "name")
+                {
+                    filters.Add(filterBuilder.Eq(x => x.Name, item.Keyword));
+                }
+                else if (item.Field == "appId")
+                {
+                    filters.Add(filterBuilder.Regex(d => d.AppId, new BsonRegularExpression(item.Keyword, "i")));
+                }
+            }
+         
+
+            var finalFilter = filters.Count > 0
+                ? filterBuilder.And(filters)
+                : FilterDefinition<User>.Empty;
+
+            // 执行查询
+              var total = await _userService._users.CountDocumentsAsync(finalFilter);
+            var results = await _userService._users.Find(finalFilter)
+                .Skip((page - 1) * rows)
+                .Limit(rows)
+                .ToListAsync();
+            //使用linq查询返回指定字段
+            var data = results.Select(x => new
+            {
+                x.Id,
+                x.Username,
+                x.Province,
+                x.City,
+                x.AppId,
+                x.Name,
+                x.Chmod,
+                x.MobilePhone
+            }).ToList();
+            //使用匿名类返回数据
+            msg.Code = 0;
+            msg.Message = "查询成功";
+            msg.Data = new
+            {
+                total = total,
+                rows = data
+            };
+            return Ok(msg);
+        }
         /// <summary>
         /// jwt token权限测试
         /// </summary>
@@ -118,63 +189,117 @@ namespace SolidarityBookCatalog.Controllers
             return msg;
         }
         [HttpPost("login")]
-        public IActionResult Login([FromBody] UserDTOLogin login)
+        public IActionResult Login([FromBody] UserDTOLogin login, string source)
         {
             Msg msg = new Msg();
-            //一try到底，这样不好，但是算球，因为被MICROSOFT的jwt token包给坑了
+
+            var ret = new Dictionary<string, string>
+            {
+                { "Id", "" },
+                { "UserName", "" },
+                { "Role", "" },
+                { "source", source },
+                { "MobilePhone", "" },
+                { "OpenId",""}
+            };
+
             try
             {
-                // 创建查询过滤器,写在服务中太麻烦，小段代码直接在此写了算球
-                var filter = Builders<User>.Filter.And(
-                    Builders<User>.Filter.Eq("username", login.username),
-                    Builders<User>.Filter.Eq("password", login.password)
-                );
-
-                // 执行查询
-                var user = _userService._users.Find(filter).FirstOrDefault();
-                if (user == null)
+                switch (source)
                 {
-                    msg.Code = 1;
-                    msg.Message = "密码不匹配";
-                    return Ok(msg);
+                    case "admin":
+                        var filter = Builders<User>.Filter.And(
+                            Builders<User>.Filter.Eq("username", login.username),
+                            Builders<User>.Filter.Eq("password", login.password)
+                        );
+                        var user = _userService._users.Find(filter).FirstOrDefault();
+                        if (user == null)
+                        {
+                            msg.Code = 1;
+                            msg.Message = "密码不匹配";
+                            return Ok(msg);
+                        }
+                        else
+                        {
+                            ret["Id"] = user.Id;
+                            ret["UserName"] = user.Username;
+                            ret["Role"] = "admin";
+                        }
+                        break;
+                    case "postman":
+                    case "manager":
+                        var filterManager = Builders<Manager>.Filter.And(
+                           Builders<Manager>.Filter.Eq("username", login.username),
+                           Builders<Manager>.Filter.Eq("password", login.password)
+                       );
+                        var manager =_userService._managers.Find(filterManager).FirstOrDefault();
+                        if (manager == null)
+                        {
+                            msg.Code = 1;
+                            msg.Message = "密码不匹配";
+                            return Ok(msg);
+                        }
+                        else
+                        {
+                            ret["Id"] = manager.Id;
+                            ret["UserName"] = manager.UserName;
+                            ret["Role"] =source;
+                        }
+                        break;
+                    
+                    case "reader":
+                        var readerManager = Builders<Manager>.Filter.And(
+                          Builders<Manager>.Filter.Eq("username", login.username),
+                          Builders<Manager>.Filter.Eq("password", login.password)
+                      );
+                        var reader = _userService._managers.Find(readerManager).FirstOrDefault();
+                        if (reader == null)
+                        {
+                            msg.Code = 1;
+                            msg.Message = "密码不匹配";
+                            return Ok(msg);
+                        }
+                        else
+                        {
+                            ret["Id"] = reader.Id;
+                            ret["UserName"] = reader.UserName;
+                            ret["Role"] = "reader";
+                        }
+                        break;
                 }
 
-
-                //获取 RSA 私钥
                 var rsa = RSA.Create();
-                //var privateKeyXml = _userService.getTokenPrivateKey();
                 rsa.ImportFromPem(_userService.getTokenPrivateKey("pem"));
-                //rsa.FromXmlString(privateKeyXml);
                 var securityKey = new RsaSecurityKey(rsa);
                 var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.RsaSha256);
 
-                // 创建 Claims
                 var claims = new[]
-                    {
-                    new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-                    new Claim(ClaimTypes.Name, user?.Username),
-                    new Claim(ClaimTypes.MobilePhone,user.MobilePhone??"没有录入手机号"),
-                    new Claim(ClaimTypes.Role, "manager")
+                {
+                    new Claim(ClaimTypes.NameIdentifier, ret["Id"].ToString()),
+                    new Claim(ClaimTypes.Name, ret["UserName"].ToString()),
+                    new Claim(ClaimTypes.MobilePhone, ret["MobilePhone"].ToString() ?? "没有录入手机号"),
+                    new Claim(ClaimTypes.Role, ret["Role"].ToString()),
+                    new Claim(ClaimTypes.Dsa, ret["source"].ToString()),
+                    new Claim(ClaimTypes.Dns, ret["OpenId"].ToString())
                 };
-                // 创建 Token
+
                 var token = new JwtSecurityToken(
                     issuer: _configuration["Jwt:Issuer"],
                     audience: _configuration["Jwt:Audience"],
                     claims: claims,
-                    expires: DateTime.UtcNow.AddMinutes(300), // 使用 UTC 时间
+                    expires: DateTime.UtcNow.AddMinutes(300),
                     signingCredentials: credentials
                 );
 
-                // 生成 Token 字符串
                 var tokenStr = new JwtSecurityTokenHandler().WriteToken(token);
-                //
                 msg.Code = 0;
                 msg.Message = $"{login.username}成功获取管理token";
                 msg.Data = new
                 {
                     token = tokenStr,
-                    expire= DateTime.UtcNow.AddMinutes(300),
-                    name= user?.Username
+                    expire = DateTime.UtcNow.AddMinutes(300),
+                    name = ret["UserName"].ToString(),
+                    Information = ret
                 };
             }
             catch (Exception ex)

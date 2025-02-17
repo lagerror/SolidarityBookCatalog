@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using MongoDB.Bson;
 using MongoDB.Driver;
 using SolidarityBookCatalog.Models;
@@ -16,17 +17,20 @@ namespace SolidarityBookCatalog.Controllers
         private readonly BibliosService _bookService;
         private readonly UserService _userService;
         private readonly HoldingService _holdingService;
+        private readonly ILogger<HoldingController> _logger;
 
-        public HoldingController(BibliosService bookService, UserService userService,HoldingService holdingService)
+        public HoldingController(BibliosService bookService, UserService userService,HoldingService holdingService, ILogger<HoldingController> logger   )
         {
             _bookService = bookService;
             _userService = userService;
             _holdingService = holdingService;
+            _logger = logger;
         }
 
         // GET: api/<HoldingController>
         [HttpGet]
-        public IEnumerable<string> Get()
+        [Route("fun")]
+        public IEnumerable<string> fun(string act,string pars)
         {
             //var indexKeysDefinition = Builders<Holding>.IndexKeys.Ascending(Holding => Holding.Identifier);
             //var indexOptions = new CreateIndexOptions { Unique = true }; // 唯一性
@@ -131,6 +135,89 @@ namespace SolidarityBookCatalog.Controllers
                 msg.Message = $"馆藏查询异常：{ex.Message}";
             }
 
+            return msg;
+        }
+
+        [HttpPost]
+        [Route("search")]
+        public async Task<IActionResult> Search(SearchQueryList list, int rows = 10, int page = 1)
+        {
+            Msg msg = new Msg();
+            try
+            {
+                msg = await _holdingService.searchAsync(list, rows, page);
+            }
+            catch (Exception ex)
+            {
+                msg.Code = 100;
+                msg.Message = $"查询错误：{ex.Message}";
+            }
+            return Ok(msg);
+        }
+
+
+        [HttpPost]
+        [Route("insert")]
+        [Authorize(Policy = "AdminOrManager")]
+        public ActionResult<Msg> Insert(Holding holding)
+        {
+            Msg msg = new Msg();
+            msg.Message = "暂未开放";
+            return Ok(msg);
+            try
+            {
+                _holdingService.insert(holding);
+                msg.Code = 0;
+                msg.Message = "插入成功";
+            }
+            catch (Exception ex)
+            {
+                msg.Code = 100;
+                msg.Message = $"插入异常：{ex.Message}";
+            }
+            return msg;
+        }
+
+        [HttpPost]
+        [Route("update/{identifier}")]
+        [Authorize(Policy = "AdminOrManager")]
+        public ActionResult<Msg> Update(string identifier, Holding holding)
+        {
+            Msg msg = new Msg();
+            msg.Message = "暂未开放";
+            return Ok(msg);
+            try
+            {
+                _holdingService.Update(holding.Identifier, holding);
+                msg.Code = 0;
+                msg.Message = "更新成功";
+            }
+            catch (Exception ex)
+            {
+                msg.Code = 100;
+                msg.Message = $"更新异常：{ex.Message}";
+            }
+            return msg;
+        }
+        [HttpPost]
+        [Route("delete/{identifier}")]
+        [Authorize(Policy = "AdminOrManager")]
+        public ActionResult<Msg> Delete(string identifier)
+        {
+            Msg msg = new Msg();
+            msg.Message = "暂未开放";
+            return Ok(msg);
+            try
+            {
+                _holdingService.Delete(identifier);
+                msg.Code = 0;
+                msg.Message = "删除成功";
+            }
+            catch (Exception ex)
+            {
+                msg.Code = 100;
+                msg.Message = $"删除异常：{ex.Message}";
+            }
             return msg;
         }
 

@@ -48,6 +48,8 @@ builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy("AdminOrManager", policy =>
         policy.RequireRole("admin", "manager"));
+    options.AddPolicy("ManagerOrReader", policy =>
+        policy.RequireRole("admin, manager","reader"));
 });
 
 builder.Services.AddControllers();

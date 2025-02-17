@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using MongoDB.Driver;
 using SolidarityBookCatalog.Models;
@@ -13,11 +14,13 @@ namespace SolidarityBookCatalog.Controllers
     {
         private readonly BibliosService _bookService;
         private readonly UserService _userService;
-       
-        public BibliosController(BibliosService bookService,UserService userService)
+        private readonly ILogger<BibliosController> _logger;
+
+        public BibliosController(BibliosService bookService,UserService userService,ILogger<BibliosController> logger)
         {
             _bookService = bookService;
             _userService = userService;
+            _logger = logger;
         }
 
         [HttpGet]
@@ -38,11 +41,12 @@ namespace SolidarityBookCatalog.Controllers
             }
             return Ok();
         }
-        [HttpGet]
-        public ActionResult<List<Biblios>> Get()
+        [HttpPost]
+        [Route("search")]
+        public async Task<IActionResult> Search(SearchQueryList list, int rows = 10, int page = 1)
         {
-            var books = _bookService.Get().Take(10).ToList();
-            return books;
+            var msg=await _bookService.SearchAsync(list,rows,page);
+            return Ok(msg);
         }
 
         [HttpGet]
@@ -122,10 +126,14 @@ namespace SolidarityBookCatalog.Controllers
         }
 
         [HttpPost]
+        [Route("insert")]
+        [Authorize(Policy ="AdminOrManager")]
         public ActionResult<Msg> Insert(Biblios book)
         {
             Msg msg = new Msg();
-
+            //禁止
+            msg.Message = "暂不开放";
+            return Ok(msg);
             //model校验
             //检查输入的ISBN，去掉-，把10位的转换位13位
             Tuple<bool,string> tuple= Biblios.validIsbn(book.Identifier);
@@ -258,13 +266,12 @@ namespace SolidarityBookCatalog.Controllers
 
             return Ok(msg);
         }
-        [HttpPut]
+        [HttpPost]
+        [Route("update/{identifier}")]
+        [ Authorize(Policy ="AdminOrManager")]
         public ActionResult<Msg> Update(string identifier, Biblios book)
         {
             Msg msg = new Msg();
-
-
-
             //模型校验
             //检查输入的ISBN，去掉-，把10位的转换位13位
             if (book.Identifier != null) {
@@ -377,11 +384,15 @@ namespace SolidarityBookCatalog.Controllers
         }
 
 
-        [HttpDelete]
+        [HttpGet]
+        [Route("delete/{identifier}")]
+        [Authorize(policy: "AdminOrManager")]
         public ActionResult<Msg> Delete(string identifier)
         {
             Msg msg= new Msg();
-
+            //禁止
+            msg.Message = "暂不开放";
+            return Ok(msg);
             var book = _bookService.Get(identifier);
 
             if (book == null)

@@ -6,6 +6,8 @@ using System.Collections;
 using System.Linq;
 using DnsClient.Protocol;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.AspNetCore.Http.HttpResults;
+using MongoDB.Bson;
 
 namespace SolidarityBookCatalog.Services
 {
@@ -23,9 +25,54 @@ namespace SolidarityBookCatalog.Services
             this.httpClientFactory = httpClientFactory;
         }
 
-        public List<Biblios> Get()
+        public async Task<Msg> SearchAsync(SearchQueryList list,int rows=10,int page=1)
         {
-            return _books.Find(book => true).Limit(10).ToList();
+            Msg msg=new Msg();
+            // 构建过滤条件
+            var filterBuilder = Builders<Biblios>.Filter;
+            var filters = new List<FilterDefinition<Biblios>>();
+            foreach(var item in list.List)
+            {
+                if (item.Field == "title")
+                {
+                    filters.Add(filterBuilder.Regex(d => d.Title, new BsonRegularExpression(item.Keyword, "i")));
+                }
+                else if (item.Field == "creator")
+                {
+                    filters.Add(filterBuilder.Regex(d => d.Creator, new BsonRegularExpression(item.Keyword, "i")));
+                }
+                else if (item.Field == "publisher")
+                {
+                    filters.Add(filterBuilder.Regex(d => d.Publisher, new BsonRegularExpression(item.Keyword, "i")));
+                }else if(item.Field == "subject")
+                {
+                    filters.Add(filterBuilder.Regex(d => d.Subject, new BsonRegularExpression(item.Keyword, "i")));
+                }
+                else if (item.Field == "identifier")
+                {
+                    filters.Add(filterBuilder.Regex(d => d.Identifier, new BsonRegularExpression(item.Keyword, "i")));
+                }   
+            }
+                       
+            var finalFilter = filters.Count > 0
+                ? filterBuilder.And(filters)
+                : FilterDefinition<Biblios>.Empty;
+
+            // 执行查询
+            var total = await _books.CountDocumentsAsync(finalFilter);
+            var results = await _books.Find(finalFilter)
+                .Skip((page - 1) * rows)
+                .Limit(rows)
+                .ToListAsync();
+            
+            msg.Code = 0;
+            msg.Message = "查询成功";
+            msg.Data = new { 
+                total=total, 
+                rows=results 
+            };
+
+            return msg;
         }
 
         public Biblios Get(string identifier)

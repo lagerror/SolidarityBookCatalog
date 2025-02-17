@@ -16,13 +16,17 @@ namespace SolidarityBookCatalog.Services
         public readonly IMongoCollection<User> _users;
         public readonly IMongoCollection<Biblios> _books;
         public readonly IMongoCollection<Holding> _holdings;
-      
+        public readonly IMongoCollection<Manager> _managers;
+        public readonly IMongoCollection<Reader> _readers;
+
         public UserService(IConfiguration config, IMongoClient client)
         {
             var database = client.GetDatabase("BookReShare");
             _users = database.GetCollection<User>("user");
             _books = database.GetCollection<Biblios>("biblios");
             _holdings= database.GetCollection<Holding>("holding");
+            _managers = database.GetCollection<Manager>("managers");
+            _readers = database.GetCollection<Reader>("readers");
         }
         public bool insert(User user) { 
             bool flag=false;

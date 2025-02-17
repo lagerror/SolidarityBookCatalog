@@ -1,4 +1,5 @@
-﻿using MongoDB.Driver;
+﻿using MongoDB.Bson;
+using MongoDB.Driver;
 using SolidarityBookCatalog.Models;
 using System.Text.RegularExpressions;
 
@@ -17,6 +18,47 @@ namespace SolidarityBookCatalog.Services
         public Holding Get(string identifier)
         {
             return _holdings.Find<Holding>(hoding => hoding.Identifier == identifier).FirstOrDefault();
+        }
+
+        public async Task<Msg> searchAsync(SearchQueryList list, int rows = 10, int page = 1)
+        {
+            Msg msg = new Msg();
+            // 构建过滤条件
+            var filterBuilder = Builders<Holding>.Filter;
+            var filters = new List<FilterDefinition<Holding>>();
+            foreach (var item in list.List)
+            {
+                if (item.Field == "identifier")
+                {
+                    filters.Add(filterBuilder.Eq(x=>x.Identifier,item.Keyword));
+                }
+                else if (item.Field == "userName")
+                {
+                    var regexPattern = $"^{item.Keyword.Replace(".", "\\.")}.*";
+                    filters.Add(filterBuilder.Regex(d => d.UserName, new Regex(regexPattern)));
+                }
+           }
+
+            var finalFilter = filters.Count > 0
+                ? filterBuilder.And(filters)
+                : FilterDefinition<Holding>.Empty;
+
+            // 执行查询
+            var total = await _holdings.CountDocumentsAsync(finalFilter);
+            var results = await _holdings.Find(finalFilter)
+                .Skip((page - 1) * rows)
+                .Limit(rows)
+                .ToListAsync();
+
+            msg.Code = 0;
+            msg.Message = "查询成功";
+            msg.Data = new
+            {
+                total = total,
+                rows = results
+            };
+
+            return msg;
         }
 
         public  List<Holding> search(string identifier, string prefix="all")
