@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using MongoDB.Driver;
 using SolidarityBookCatalog.Models;
+using SolidarityBookCatalog.Services;
 
 // For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
 
@@ -13,10 +14,16 @@ namespace SolidarityBookCatalog.Controllers
     public class ReaderController : ControllerBase
     {
         private readonly IMongoCollection<Reader> _readers;
-        public ReaderController(IMongoClient client) 
+        private readonly IConfiguration _configuration;
+        private readonly string _cryptKey;
+        private readonly string _cryptIv;
+        public ReaderController(IMongoClient client,IConfiguration configuration) 
         {
             var database = client.GetDatabase("BookReShare");
             _readers = database.GetCollection<Reader>("reader");
+            _configuration = configuration;
+            _cryptKey = _configuration["Crypt:key"];
+            _cryptIv = _configuration["Crypt:iv"];
         }
        
         //功能测试
@@ -73,19 +80,25 @@ namespace SolidarityBookCatalog.Controllers
         [Route("insert")]
         public async Task<IActionResult> insert([FromBody] CreateReaderDto dto)
         {
+            Msg msg = new Msg();
+            //校验openId的解密
+            if (!EncryptOpenId(dto.OpenId).Item1)
+            {
+                return BadRequest("OpenId解密失败");
+            }
             var reader = new Reader
             {
                 OpenId = dto.OpenId,
                 Name = dto.Name,
-                StudentId = dto.StudentId,
+                StudentId = dto.ReaderNo,
                 Phone = dto.Phone,
                 BirthYear = dto.BirthYear,
                 Type = dto.Type,
                 Library = dto.Library,
-                Area=dto.Area,
+                AppId=dto.AppId,
                 Password = dto.Password
             };
-            Msg msg = new Msg();
+           
             try
             {
                 await _readers.InsertOneAsync(reader);
@@ -95,7 +108,7 @@ namespace SolidarityBookCatalog.Controllers
             catch (MongoWriteException ex) when (ex.WriteError.Category == ServerErrorCategory.DuplicateKey)
             {
                 msg.Code = 1;
-                msg.Message = $"学号{reader.StudentId}或手机号{reader.Phone}已存在";
+                msg.Message = $"读者证号{reader.OpenId}或者学号{reader.StudentId}或手机号{reader.Phone}已存在";
                 return BadRequest(msg);
             }
             catch (Exception ex) {
@@ -201,6 +214,30 @@ namespace SolidarityBookCatalog.Controllers
                 msg.Message = ex.Message;   
             }
             return Ok(msg);
+        }
+
+
+        //以下是自定义函数
+        //加解密openid
+        private Tuple<bool,string> EncryptOpenId(string openid)
+        {
+            Tuple<bool, string> result = new Tuple<bool, string>(false, "");
+            string cryptOpenId = Tools.DecryptStringFromBytes_Aes(openid, _cryptKey, _cryptIv);
+            if (cryptOpenId != null)
+            {
+                result = new Tuple<bool, string>(true, cryptOpenId);
+            }
+            return result;
+        }
+        private Tuple<bool, string> DecryptOpenId(string cryptOpenid)
+        {
+            Tuple<bool, string> result = new Tuple<bool, string>(false, "");
+            string openId = Tools.EncryptStringToBytes_Aes(cryptOpenid, _cryptKey, _cryptIv);
+            if (openId != null)
+            {
+                result = new Tuple<bool, string>(true, openId);
+            }
+            return result;
         }
     }
 }

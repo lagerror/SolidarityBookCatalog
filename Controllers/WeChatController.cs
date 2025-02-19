@@ -72,7 +72,8 @@ namespace SolidarityBookCatalog.Controllers
         {
             Console.WriteLine($"code:{code};state:{state}");    
             string openid = await _weChatTokenService.GetOpenIdByCodeAsync(code);
-            return Redirect($"https://reader.yangtzeu.edu.cn/solidarity/reader.html?pars={openid}");
+            Console.WriteLine($"https://reader.yangtzeu.edu.cn/wechat/#/register?openId={openid}");
+            return Redirect($"https://reader.yangtzeu.edu.cn/wechat/#/register?openId={openid}");
             //string ticket = await _weChatTokenService.GetJsapiTicketAsync();
             //string token=await _weChatTokenService.GetTokenAsync();
             //string cryptOpenId= Tools.EncryptStringToBytes_Aes(openid, _configuration["Crypt:Key"], _configuration["Crypt:iv"]);

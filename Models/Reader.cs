@@ -32,9 +32,9 @@ namespace SolidarityBookCatalog.Models
         public string Phone { get; set; }
         //开户馆
         [Required]
-        public string Library { get; set; }
-        //校区
-        public string? Area { get; set; }
+        public string? Library { get; set; }
+        //学校的APPID，用于在本地图书馆管理系统中确认注册者的身份
+        public string? AppId { get; set; }
         //审核人
         public string? Auditor { get; set; }
         //审核时间
@@ -60,8 +60,9 @@ namespace SolidarityBookCatalog.Models
         public string Name { get; set; }
 
         [Required]
-        public string StudentId { get; set; }
-       
+        public string ReaderNo { get; set; }
+
+        [Required]
         public PublicEnum.Type? Type { set; get; }
        
         public int? BirthYear { get; set; }
@@ -71,8 +72,9 @@ namespace SolidarityBookCatalog.Models
 
         [Required]
         public string Library { get; set; }
-        //校区，因为多数大学有相距较远的多个校区
-        public string Area { get; set; }
+
+        [Required]
+        public string AppId{ get; set; }
 
         [Required]
         public string Password { get; set; }

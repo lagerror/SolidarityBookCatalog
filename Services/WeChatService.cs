@@ -46,9 +46,9 @@ namespace SolidarityBookCatalog.Services
             var response = await httpClient.GetAsync($"https://api.weixin.qq.com/sns/oauth2/access_token?appid={_appId}&secret={_appSecret}&code={code}&grant_type=authorization_code");
             response.EnsureSuccessStatusCode();
             var json = await response.Content.ReadAsStringAsync();
-            Console.WriteLine($"openid:{json}");
+            //Console.WriteLine($"openid:{json}");
             var jsonObject = JsonSerializer.Deserialize<JsonElement>(json);
-            if (jsonObject.TryGetProperty("openId", out JsonElement openId))
+            if (jsonObject.TryGetProperty("openid", out JsonElement openId))
             {
                 return openId.GetString();
             }
@@ -64,6 +64,7 @@ namespace SolidarityBookCatalog.Services
             // 尝试从缓存中获取 Token
             if (_cache.TryGetValue("Access_Token", out string? token))
             {
+                Console.WriteLine($"缓存中获取了Access_Token:{token}");
                 return token;
             }
 
@@ -74,6 +75,7 @@ namespace SolidarityBookCatalog.Services
                 // 再次检查缓存，防止其他线程已经刷新
                 if (_cache.TryGetValue("Access_Token", out token))
                 {
+                    Console.WriteLine($"线程进入时缓存中获取了Access_Token:{token}");
                     return token;
                 }
 
@@ -86,7 +88,7 @@ namespace SolidarityBookCatalog.Services
                 };
 
                 _cache.Set("Access_Token", newToken, cacheOptions);
-                Console.WriteLine($"Access_Token:{newToken}");
+                Console.WriteLine($"获取了新Access_Token:{newToken}");
                 return newToken;
             }
             catch (Exception ex)
@@ -108,6 +110,7 @@ namespace SolidarityBookCatalog.Services
             // 尝试从缓存中获取 Token
             if (_cache.TryGetValue("Jsapi_Token", out string? Jsapi_Token))
             {
+                Console.WriteLine($"缓存中获取了Jsapi_Token:{Jsapi_Token}");
                 return Jsapi_Token;
             }
 
@@ -118,6 +121,7 @@ namespace SolidarityBookCatalog.Services
                 // 再次检查缓存，防止其他线程已经刷新
                 if (_cache.TryGetValue("Jsapi_Token", out Jsapi_Token))
                 {
+                    Console.WriteLine($"进入线程时缓存中获取了Jsapi_Token:{Jsapi_Token}");
                     return Jsapi_Token;
                 }
 
@@ -142,7 +146,7 @@ namespace SolidarityBookCatalog.Services
                 };
 
                 _cache.Set("Jsapi_Token", Jsapi_Token, cacheOptions);
-                Console.WriteLine($"Jsapi_Token:{Jsapi_Token}");
+                Console.WriteLine($"获取了新的Jsapi_Token:{Jsapi_Token}");
                 return Jsapi_Token;
             }
             catch (Exception ex)
@@ -166,7 +170,7 @@ namespace SolidarityBookCatalog.Services
                 string noncestr = Guid.NewGuid().ToString("N");
                 string jsapi_ticket = await GetJsapiTicketAsync();
                 string timestamp = DateTimeOffset.Now.ToUnixTimeSeconds().ToString();
-                string url = "https://reader.yangtzeu.edu.cn/solidarity/wechat.html";
+                string url = "https://reader.yangtzeu.edu.cn/wechat";
                 SortedDictionary<string, string> pars = new SortedDictionary<string, string>();
                 pars.Add("noncestr", noncestr);
                 pars.Add("jsapi_ticket", jsapi_ticket);
