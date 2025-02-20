@@ -16,6 +16,8 @@ namespace SolidarityBookCatalog.Controllers
         {
             _configuration = configuration;
             _weChatTokenService = weChatTokenService;
+
+           
         }
         [HttpGet]
         public string Get(string echoStr, string signature, string timestamp, string nonce)
@@ -61,6 +63,17 @@ namespace SolidarityBookCatalog.Controllers
                     msg.Message = "获取成功";
                     msg.Data = signature;
                     break;
+                case "EncryptOpenId":
+                    msg.Code = 0;
+                    msg.Message = "获取成功";
+                    msg.Data = _weChatTokenService.EncryptOpenId(pars).Item2;
+                    break;
+                case "DecryptOpenId":
+                    msg.Code = 0;
+                    msg.Message = "获取成功";
+                    msg.Data = _weChatTokenService.DecryptOpenId(pars).Item2;
+                    break;
+               
             }
             return Ok(msg);
         }
@@ -71,9 +84,18 @@ namespace SolidarityBookCatalog.Controllers
         public async  Task<IActionResult> oauth(string code, string state)
         {
             Console.WriteLine($"code:{code};state:{state}");    
-            string openid = await _weChatTokenService.GetOpenIdByCodeAsync(code);
-            Console.WriteLine($"https://reader.yangtzeu.edu.cn/wechat/#/register?openId={openid}");
-            return Redirect($"https://reader.yangtzeu.edu.cn/wechat/#/register?openId={openid}");
+            string? openId = await _weChatTokenService.GetOpenIdByCodeAsync(code);
+            Console.WriteLine($"{openId}");
+            
+            if (openId != null)
+            {
+                openId = _weChatTokenService.EncryptOpenId(openId).Item2;
+                Console.WriteLine(openId);
+                openId = await _weChatTokenService.GetJsapiSignature(openId);
+                Console.WriteLine(openId);
+                Console.WriteLine($"https://reader.yangtzeu.edu.cn/wechat/register?openId={openId}");
+                return Redirect($"https://reader.yangtzeu.edu.cn/wechat/register?openId={openId}");
+            }
             //string ticket = await _weChatTokenService.GetJsapiTicketAsync();
             //string token=await _weChatTokenService.GetTokenAsync();
             //string cryptOpenId= Tools.EncryptStringToBytes_Aes(openid, _configuration["Crypt:Key"], _configuration["Crypt:iv"]);
@@ -82,6 +104,33 @@ namespace SolidarityBookCatalog.Controllers
             return Ok();
         }
 
+        [HttpGet]
+        [Route("getJsSign")]
+        public async Task<IActionResult> GetJsSign(string cryptOpenId)
+        {
+            Msg msg = new Msg();
+            var tuple = _weChatTokenService.DecryptOpenId(cryptOpenId);
+            if (!tuple.Item1)
+            {
+                msg.Code = 1;
+                msg.Message = "解密失败";
+                return Ok(msg);
+            }
+            string? jsApiSign = await _weChatTokenService.GetJsapiSignature(cryptOpenId);
+            if (jsApiSign == null)
+            {
+                msg.Code = 2;
+                msg.Message = "获取失败";
+                return Ok(msg);
+            }
+            else
+            {
+                msg.Code = 0;
+                msg.Message = "获取成功";
+                msg.Data = jsApiSign;
+                return Ok(msg);
+            }
+        }
             // POST api/<WeChatController>
             [HttpPost]
         public void Post([FromBody]string value)

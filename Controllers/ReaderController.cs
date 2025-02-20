@@ -81,11 +81,16 @@ namespace SolidarityBookCatalog.Controllers
         public async Task<IActionResult> insert([FromBody] CreateReaderDto dto)
         {
             Msg msg = new Msg();
+            Console.WriteLine(dto.OpenId);
             //校验openId的解密
-            if (!EncryptOpenId(dto.OpenId).Item1)
+            var ret = DecryptOpenId(dto.OpenId);
+            if (!ret.Item1)
             {
-                return BadRequest("OpenId解密失败");
+                msg.Code = 3;
+                msg.Message=$"OpenId解密失败";
+                return Ok(msg);
             }
+            dto.OpenId = ret.Item2;
             var reader = new Reader
             {
                 OpenId = dto.OpenId,
@@ -103,18 +108,19 @@ namespace SolidarityBookCatalog.Controllers
             {
                 await _readers.InsertOneAsync(reader);
                 msg.Code = 0;
+                msg.Message = $"插入成功:{dto.Name}";
                 return Ok(msg);
             }
             catch (MongoWriteException ex) when (ex.WriteError.Category == ServerErrorCategory.DuplicateKey)
             {
                 msg.Code = 1;
-                msg.Message = $"读者证号{reader.OpenId}或者学号{reader.StudentId}或手机号{reader.Phone}已存在";
-                return BadRequest(msg);
+                msg.Message = $"微信openId或者学号{reader.StudentId}或手机号{reader.Phone}已存在";
+                return Ok(msg);
             }
             catch (Exception ex) {
                 msg.Code = 2;
                 msg.Message = ex.Message;
-                return BadRequest(msg);
+                return Ok(msg);
             }
         }
 
@@ -122,11 +128,18 @@ namespace SolidarityBookCatalog.Controllers
         [HttpPost]
         [Authorize(Policy = "ManagerOrReader")]
         [Route("update")]
-        public async Task<IActionResult> update(string openid, [FromBody] Reader updateReader)
+        public async Task<IActionResult> update(string openId, [FromBody] Reader updateReader)
         {
-           
             Msg msg = new Msg();
-            
+            //校验openId的解密
+            var ret = DecryptOpenId(openId);
+            if (!ret.Item1)
+            {
+                msg.Code = 3;
+                msg.Message = $"OpenId解密失败";
+                return Ok(msg);
+            }
+            openId=ret.Item2;
             var updateDefinitionBuilder = Builders<Reader>.Update;
             var updates = new List<UpdateDefinition<Reader>>();
             try
@@ -158,13 +171,13 @@ namespace SolidarityBookCatalog.Controllers
                 if (updates.Count > 0)
                 {
                     var updateDefinition = updateDefinitionBuilder.Combine(updates);
-                    var filter = Builders<Reader>.Filter.Eq(b => b.OpenId, openid);
+                    var filter = Builders<Reader>.Filter.Eq(b => b.OpenId, openId);
                     var result =await _readers.UpdateOneAsync(filter, updateDefinition);
 
                     if (result.IsAcknowledged && result.ModifiedCount>0 )
                     {
                         msg.Code = 0;
-                        msg.Message = $"update:成功更新{openid}";
+                        msg.Message = $"update:成功更新{openId}";
                     }
                     else
                     {
@@ -191,12 +204,20 @@ namespace SolidarityBookCatalog.Controllers
         [HttpGet]
         [Authorize(Policy = "AdminOrManager")]
         [Route("delete")]
-        public async Task<IActionResult> Delete(string openid)
+        public async Task<IActionResult> Delete(string openId)
         {
             var msg = new Msg();
+            //校验openId的解密
+            var ret = DecryptOpenId(openId);
+            if (!ret.Item1)
+            {
+                msg.Code = 3;
+                msg.Message = $"OpenId解密失败";
+                return Ok(msg);
+            }
             try
             {
-                var result = await _readers.DeleteOneAsync(r => r.OpenId == openid);
+                var result = await _readers.DeleteOneAsync(r => r.OpenId == openId);
 
                 if (result.DeletedCount == 1)
                 {
@@ -219,20 +240,20 @@ namespace SolidarityBookCatalog.Controllers
 
         //以下是自定义函数
         //加解密openid
-        private Tuple<bool,string> EncryptOpenId(string openid)
+        private Tuple<bool,string> EncryptOpenId(string openId)
         {
             Tuple<bool, string> result = new Tuple<bool, string>(false, "");
-            string cryptOpenId = Tools.DecryptStringFromBytes_Aes(openid, _cryptKey, _cryptIv);
+            string cryptOpenId = Tools.EncryptStringToBytes_Aes(openId, _cryptKey, _cryptIv);
             if (cryptOpenId != null)
             {
                 result = new Tuple<bool, string>(true, cryptOpenId);
             }
             return result;
         }
-        private Tuple<bool, string> DecryptOpenId(string cryptOpenid)
+        private Tuple<bool, string> DecryptOpenId(string cryptOpenId)
         {
             Tuple<bool, string> result = new Tuple<bool, string>(false, "");
-            string openId = Tools.EncryptStringToBytes_Aes(cryptOpenid, _cryptKey, _cryptIv);
+            string openId = Tools.DecryptStringFromBytes_Aes(cryptOpenId, _cryptKey, _cryptIv);
             if (openId != null)
             {
                 result = new Tuple<bool, string>(true, openId);

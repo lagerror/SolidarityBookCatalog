@@ -4,6 +4,10 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text;
 using System.Security.Cryptography;
+using System.Web;
+using MongoDB.Bson.IO;
+using SolidarityBookCatalog.Models;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace SolidarityBookCatalog.Services
 {
@@ -15,6 +19,10 @@ namespace SolidarityBookCatalog.Services
         Task<string> GetOpenIdByCodeAsync(string code);
         Task<string> GetJsapiTicketAsync();
         Task<string> GetJsapiSignature(string cryptOpenid);
+        Task<WeChatUserInfoResponse> GetUserInfoAsync(string accessToken,string openid);
+        public Tuple<bool, string> EncryptOpenId(string openid);
+        public Tuple<bool, string> DecryptOpenId(string cryptOpenid);
+       
     }
 
     public class WeChatTokenService : IWeChatTokenService, IDisposable
@@ -22,21 +30,28 @@ namespace SolidarityBookCatalog.Services
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly IMemoryCache _cache;
         private readonly ILogger<WeChatTokenService> _logger;
+        private readonly IConfiguration _configuration; 
         private readonly SemaphoreSlim _semaphore = new SemaphoreSlim(1, 1); // 确保线程安全
 
         // 微信 Token 的配置参数（从 appsettings.json 读取）
         private readonly string _appId;
         private readonly string _appSecret;
+        private readonly string _cryptKey;
+        private readonly string _cryptIv;
 
         public WeChatTokenService(IHttpClientFactory httpClientFactory,IMemoryCache cache,IConfiguration configuration,ILogger<WeChatTokenService> logger)
         {
             _httpClientFactory = httpClientFactory;
             _cache = cache;
             _logger = logger;
+            _configuration  = configuration;    
 
             // 从配置中读取微信参数
             _appId = configuration["WeChat:AppId"] ?? throw new ArgumentNullException("WeChat:AppId");
             _appSecret = configuration["WeChat:AppSecret"] ?? throw new ArgumentNullException("WeChat:AppSecret");
+
+            _cryptKey = _configuration["Crypt:key"];
+            _cryptIv = _configuration["Crypt:iv"];
         }
         
         //实现通过code获取openid
@@ -170,7 +185,7 @@ namespace SolidarityBookCatalog.Services
                 string noncestr = Guid.NewGuid().ToString("N");
                 string jsapi_ticket = await GetJsapiTicketAsync();
                 string timestamp = DateTimeOffset.Now.ToUnixTimeSeconds().ToString();
-                string url = "https://reader.yangtzeu.edu.cn/wechat";
+                string url = "https://reader.yangtzeu.edu.cn/wechat/scan";
                 SortedDictionary<string, string> pars = new SortedDictionary<string, string>();
                 pars.Add("noncestr", noncestr);
                 pars.Add("jsapi_ticket", jsapi_ticket);
@@ -185,7 +200,7 @@ namespace SolidarityBookCatalog.Services
                     var sha1Bytes = sha1.ComputeHash(Encoding.UTF8.GetBytes(string1));
                     signature = BitConverter.ToString(sha1Bytes).Replace("-", "").ToLower();
                 }
-                retStr = signature + "@" + cryptOpenid;
+                retStr = $"{_appId}@{timestamp}@{noncestr}@{signature}@{cryptOpenid}";
                 Console.WriteLine($"signature:{retStr}");
             }
             catch (Exception ex)
@@ -195,8 +210,29 @@ namespace SolidarityBookCatalog.Services
             return retStr;
 
         }
+        public async Task<WeChatUserInfoResponse> GetUserInfoAsync(string accessToken,string openid)
+        {
+            //为网页访问token
 
-       
+            var url = $"https://api.weixin.qq.com/sns/userinfo?access_token={accessToken}&openid={openid}&lang=zh_CN";
+            var userInfoResponse= new WeChatUserInfoResponse();
+            using (var client = new HttpClient())
+            {
+                var response = await client.GetAsync(url);
+                response.EnsureSuccessStatusCode();
+                var json = await response.Content.ReadAsStringAsync();
+                Console.WriteLine($"GetUserInfoAsync:{json}");
+                userInfoResponse = JsonSerializer.Deserialize<WeChatUserInfoResponse>(json);
+                if(userInfoResponse?.Openid == null)
+                {
+                    _logger.LogError("Failed to fetch WeChat user info: {0}", json);
+                    return null;
+                }
+            }
+            return userInfoResponse;
+        }
+
+        //获取全局唯一接口调用凭据
         private async Task<string> FetchNewTokenAsync()
         {
             using var httpClient = _httpClientFactory.CreateClient();
@@ -208,7 +244,8 @@ namespace SolidarityBookCatalog.Services
 
             if (tokenResponse?.AccessToken == null)
             {
-                throw new InvalidOperationException("Failed to get WeChat token");
+                _logger.LogError("Failed to fetch WeChat token: {0}", json);
+                return null;
             }
 
             return tokenResponse.AccessToken;
@@ -219,8 +256,37 @@ namespace SolidarityBookCatalog.Services
             _semaphore?.Dispose();
         }
 
-    }
+        //以下是自定义函数
+        //加解密openid
+        public Tuple<bool, string> EncryptOpenId(string openid)
+        {
+            Tuple<bool, string> result = new Tuple<bool, string>(false, "");
+            string cryptOpenId = Tools.EncryptStringToBytes_Aes(openid, _cryptKey, _cryptIv);
+            cryptOpenId = HttpUtility.UrlEncode(cryptOpenId);
+            if (cryptOpenId != null)
+            {
+                result = new Tuple<bool, string>(true, cryptOpenId);
+            }
+            return result;
+        }
+        public Tuple<bool, string> DecryptOpenId(string cryptOpenid)
+        {
+            Tuple<bool, string> result = new Tuple<bool, string>(false, "");
+            cryptOpenid = HttpUtility.UrlDecode(cryptOpenid);
+            string openId = Tools.DecryptStringFromBytes_Aes(cryptOpenid, _cryptKey, _cryptIv);
+            if (openId != null)
+            {
+                result = new Tuple<bool, string>(true, openId);
+            }
+            return result;
+        }
 
+        public Task<WeChatUserInfoResponse> GetUserInfoAsync(string openid)
+        {
+            throw new NotImplementedException();
+        }
+    }
+    //微信全局token
     public class WeChatTokenResponse
     {
         [JsonPropertyName("access_token")]
@@ -229,4 +295,5 @@ namespace SolidarityBookCatalog.Services
         [JsonPropertyName("expires_in")]
         public int ExpiresIn { get; set; }
     }
+   
 }
