@@ -75,7 +75,7 @@ namespace SolidarityBookCatalog.Services
             }
             catch (Exception ex)
             {
-                Console.WriteLine(ex.Message);
+                Console.WriteLine($"{cipherText}: {ex.Message}");
             }
             // 返回解密后的文本
             return plaintext;

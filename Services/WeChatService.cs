@@ -22,7 +22,10 @@ namespace SolidarityBookCatalog.Services
         Task<WeChatUserInfoResponse> GetUserInfoAsync(string accessToken,string openid);
         public Tuple<bool, string> EncryptOpenId(string openid);
         public Tuple<bool, string> DecryptOpenId(string cryptOpenid);
-       
+        public Task<bool> SendTemplateMessageAsync(string openid, string redirectUrl, object data, string templateId = "Y3ry7I_3kr1o-q7_biGMWNuys1M3pQva_H6m89yz88Y");
+
+
+
     }
 
     public class WeChatTokenService : IWeChatTokenService, IDisposable
@@ -53,7 +56,30 @@ namespace SolidarityBookCatalog.Services
             _cryptKey = _configuration["Crypt:key"];
             _cryptIv = _configuration["Crypt:iv"];
         }
-        
+
+        //发送留言提醒，只有在用户关注公众号后才能发送，文档地址：https://developers.weixin.qq.com/doc/offiaccount/Message_Management/Template_Message_Interface.html
+        //文字两行，一行20个字，最多5行
+        public async Task<bool> SendTemplateMessageAsync(string openid, string redirectUrl, object odata, string templateId = "X7AKgVggnJgst45K9AddUthvpr4428ZaaXtk-cNaEOw")
+        {
+            string accessToken= await GetTokenAsync();
+            string url = $"https://api.weixin.qq.com/cgi-bin/message/template/send?access_token={accessToken}";
+            using (HttpClient sendClient = new HttpClient())
+            {
+                var messageData = new
+                {
+                    touser = openid,
+                    template_id = templateId,
+                    url = redirectUrl,
+                    data = odata
+                };
+
+                StringContent content = new StringContent(JsonSerializer.Serialize(messageData), Encoding.UTF8, "application/json");
+                HttpResponseMessage response = await sendClient.PostAsync(url, content);
+                string responseContent = await response.Content.ReadAsStringAsync();
+                return response.IsSuccessStatusCode;
+            }
+        }
+
         //实现通过code获取openid
         public async Task<string> GetOpenIdByCodeAsync(string code)
         {
@@ -261,7 +287,7 @@ namespace SolidarityBookCatalog.Services
         {
             Tuple<bool, string> result = new Tuple<bool, string>(false, "");
             string cryptOpenId = Tools.EncryptStringToBytes_Aes(openid, _cryptKey, _cryptIv);
-            cryptOpenId = HttpUtility.UrlEncode(cryptOpenId);
+            
             if (cryptOpenId != null)
             {
                 result = new Tuple<bool, string>(true, cryptOpenId);
@@ -271,7 +297,7 @@ namespace SolidarityBookCatalog.Services
         public Tuple<bool, string> DecryptOpenId(string cryptOpenid)
         {
             Tuple<bool, string> result = new Tuple<bool, string>(false, "");
-            cryptOpenid = HttpUtility.UrlDecode(cryptOpenid);
+           
             string openId = Tools.DecryptStringFromBytes_Aes(cryptOpenid, _cryptKey, _cryptIv);
             if (openId != null)
             {

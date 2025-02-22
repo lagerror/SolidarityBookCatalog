@@ -78,7 +78,6 @@ namespace SolidarityBookCatalog.Controllers
             Msg msg = new Msg();
             try
             {
-                openid=HttpUtility.UrlDecode(openid);
                 //校验openId的解密
                 var ret = DecryptOpenId(openid);
                 if (!ret.Item1)
