@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using MongoDB.Driver;
 using SolidarityBookCatalog.Models;
 using SolidarityBookCatalog.Services;
+using System.Web;
 
 // For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
 
@@ -67,12 +68,57 @@ namespace SolidarityBookCatalog.Controllers
         }
 
         // GET api/<ReaderController>/5
-        [HttpGet("{openid}")]
-        public async Task<ActionResult<Reader>> Get(string openid)
+        [HttpGet]
+        [Route("getByOpenId")]
+        public async Task<IActionResult> Get(string openid)
         {
-            var reader = await _readers.Find(r => r.OpenId == openid).FirstOrDefaultAsync();
-            if (reader == null) return NotFound();
-            return Ok(reader);
+            //openId=rfWTm26wJZnpQ+S0Jgywkd1CwWuzRhO7mTGiI0/QZlY=
+            //rfWTm26wJZnpQ%2bS0Jgywkd1CwWuzRhO7mTGiI0%2fQZlY%3d  
+            //必须解码
+            Msg msg = new Msg();
+            try
+            {
+                openid=HttpUtility.UrlDecode(openid);
+                //校验openId的解密
+                var ret = DecryptOpenId(openid);
+                if (!ret.Item1)
+                {
+                    msg.Code = 3;
+                    msg.Message = $"OpenId解密失败";
+                    return Ok(msg);
+                }
+                openid = ret.Item2;
+
+                var reader = await _readers.Find(r => r.OpenId == openid).FirstOrDefaultAsync();
+                if (reader == null)
+                {
+                    msg.Code = 1;
+                    msg.Message = "未找到";
+                    return Ok(msg);
+                }
+                else
+                {
+                    var readerDto = new
+                    {
+                        Name = reader.Name,
+                        ReaderNo = reader.StudentId,
+                        Type = reader.Type,
+                        Phone = reader.Phone,
+                        BirthYear = reader.BirthYear,
+                        Library = reader.Library,
+                        AppId = reader.AppId,
+                        IsValid= reader.IsValid
+                    };
+                    msg.Code = 0;
+                    msg.Data = readerDto;
+                    return Ok(msg);
+                }
+            }
+            catch (Exception ex) { 
+                msg.Code = 100;
+                msg.Message = ex.Message;
+            }
+                return Ok(msg);
         }
 
         // POST api/<ReaderController>
@@ -82,6 +128,7 @@ namespace SolidarityBookCatalog.Controllers
         {
             Msg msg = new Msg();
             Console.WriteLine(dto.OpenId);
+            dto.OpenId = HttpUtility.UrlDecode(dto.OpenId);
             //校验openId的解密
             var ret = DecryptOpenId(dto.OpenId);
             if (!ret.Item1)

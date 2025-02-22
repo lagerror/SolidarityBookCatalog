@@ -1,6 +1,9 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using MongoDB.Driver;
+using SharpCompress.Readers;
 using SolidarityBookCatalog.Models;
 using SolidarityBookCatalog.Services;
+using System.Web;
 
 // For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
 
@@ -10,14 +13,16 @@ namespace SolidarityBookCatalog.Controllers
     [ApiController]
     public class WeChatController : ControllerBase
     {
+        private IMongoCollection<Reader> _readers;
         IConfiguration _configuration;
         IWeChatTokenService _weChatTokenService;
-        public WeChatController(IConfiguration configuration,IWeChatTokenService weChatTokenService)
+
+        public WeChatController(IConfiguration configuration,IWeChatTokenService weChatTokenService,IMongoClient mongoClient)
         {
+            var database = mongoClient.GetDatabase("BookReShare");
+            _readers = database.GetCollection<Reader>("reader");
             _configuration = configuration;
             _weChatTokenService = weChatTokenService;
-
-           
         }
         [HttpGet]
         public string Get(string echoStr, string signature, string timestamp, string nonce)
@@ -58,7 +63,7 @@ namespace SolidarityBookCatalog.Controllers
                     break;
                 case "getjsapisignature":
                     string cryptOpenid = pars;
-                    string signature = await _weChatTokenService.GetJsapiSignature(cryptOpenid);
+                    string signature = await _weChatTokenService.GetJsapiSignature(cryptOpenid, "https://reader.yangtzeu.edu.cn/wechat/scan");
                     msg.Code = 0;
                     msg.Message = "获取成功";
                     msg.Data = signature;
@@ -83,25 +88,33 @@ namespace SolidarityBookCatalog.Controllers
         [Route("oauth")]
         public async  Task<IActionResult> oauth(string code, string state)
         {
-            Console.WriteLine($"code:{code};state:{state}");    
             string? openId = await _weChatTokenService.GetOpenIdByCodeAsync(code);
-            Console.WriteLine($"{openId}");
-            
             if (openId != null)
             {
                 openId = _weChatTokenService.EncryptOpenId(openId).Item2;
-                Console.WriteLine(openId);
-                openId = await _weChatTokenService.GetJsapiSignature(openId);
-                Console.WriteLine(openId);
-                Console.WriteLine($"https://reader.yangtzeu.edu.cn/wechat/register?openId={openId}");
-                return Redirect($"https://reader.yangtzeu.edu.cn/wechat/register?openId={openId}");
+                //查询数据库是否存在该用户
+                var reader=_readers.Find(r => r.OpenId == openId).FirstOrDefault();
+                if (reader == null)  //注册
+                {
+                    openId = HttpUtility.UrlEncode(openId);
+                    return Redirect($"https://reader.yangtzeu.edu.cn/wechat/register?openId={openId}");
+                }
+                else     //登录
+                {
+                    openId = HttpUtility.UrlEncode(openId);
+                    return Redirect($"https://reader.yangtzeu.edu.cn/wechat/my?openId={openId}");
+                }
+            }
+            else   //错误
+            {
+                return Redirect($"https://reader.yangtzeu.edu.cn/wechat/error?openId=null");
             }
             //string ticket = await _weChatTokenService.GetJsapiTicketAsync();
             //string token=await _weChatTokenService.GetTokenAsync();
             //string cryptOpenId= Tools.EncryptStringToBytes_Aes(openid, _configuration["Crypt:Key"], _configuration["Crypt:iv"]);
             //string jsApiSign = await _weChatTokenService.GetJsapiSignature(cryptOpenId);
             //Console.WriteLine($"code:{code};state:{state};openid:{openid};token:{token};jsapisign:{jsApiSign}");
-            return Ok();
+          
         }
 
         [HttpGet]
@@ -116,7 +129,7 @@ namespace SolidarityBookCatalog.Controllers
                 msg.Message = "解密失败";
                 return Ok(msg);
             }
-            string? jsApiSign = await _weChatTokenService.GetJsapiSignature(cryptOpenId);
+            string? jsApiSign = await _weChatTokenService.GetJsapiSignature(cryptOpenId, "https://reader.yangtzeu.edu.cn/wechat/scan");
             if (jsApiSign == null)
             {
                 msg.Code = 2;

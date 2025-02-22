@@ -18,7 +18,7 @@ namespace SolidarityBookCatalog.Services
         //通过code获取openid
         Task<string> GetOpenIdByCodeAsync(string code);
         Task<string> GetJsapiTicketAsync();
-        Task<string> GetJsapiSignature(string cryptOpenid);
+        Task<string> GetJsapiSignature(string cryptOpenid,string url);
         Task<WeChatUserInfoResponse> GetUserInfoAsync(string accessToken,string openid);
         public Tuple<bool, string> EncryptOpenId(string openid);
         public Tuple<bool, string> DecryptOpenId(string cryptOpenid);
@@ -177,7 +177,7 @@ namespace SolidarityBookCatalog.Services
         
         //为jsapi提供签名
         //https://developers.weixin.qq.com/doc/offiaccount/OA_Web_Apps/JS-SDK.html#62
-        public async Task<string> GetJsapiSignature(string cryptOpenid)
+        public async Task<string> GetJsapiSignature(string cryptOpenid,string url= "https://reader.yangtzeu.edu.cn/wechat/scan")
         {
             string retStr = null;
             try
@@ -185,7 +185,6 @@ namespace SolidarityBookCatalog.Services
                 string noncestr = Guid.NewGuid().ToString("N");
                 string jsapi_ticket = await GetJsapiTicketAsync();
                 string timestamp = DateTimeOffset.Now.ToUnixTimeSeconds().ToString();
-                string url = "https://reader.yangtzeu.edu.cn/wechat/scan";
                 SortedDictionary<string, string> pars = new SortedDictionary<string, string>();
                 pars.Add("noncestr", noncestr);
                 pars.Add("jsapi_ticket", jsapi_ticket);
