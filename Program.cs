@@ -78,6 +78,7 @@ builder.Services.AddSingleton<ElasticNestService>();
 builder.Services.AddSingleton<BibliosService>();
 builder.Services.AddSingleton<HoldingService>();
 builder.Services.AddSingleton<UserService>();
+builder.Services.AddSingleton<ReaderService>();
 // 添加内存缓存
 builder.Services.AddMemoryCache();
 // 注册微信 Token 服务（单例）

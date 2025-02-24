@@ -21,7 +21,7 @@ namespace SolidarityBookCatalog.Models
         public string Name { get; set; }
         //读者学号
         [Required]
-        public string StudentId { get; set; }
+        public string ReaderNo { get; set; }
         //读者类型，教工，博士，硕士，本科，初高中，儿童，其它
         public PublicEnum.Type? Type { set; get; }
         //年龄

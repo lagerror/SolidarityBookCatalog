@@ -15,13 +15,15 @@ namespace SolidarityBookCatalog.Controllers
     public class ReaderController : ControllerBase
     {
         private readonly IMongoCollection<Reader> _readers;
+        private readonly ReaderService _readerService;
         private readonly IConfiguration _configuration;
         private readonly string _cryptKey;
         private readonly string _cryptIv;
-        public ReaderController(IMongoClient client,IConfiguration configuration) 
+        public ReaderController(IMongoClient client,IConfiguration configuration,ReaderService readerService) 
         {
             var database = client.GetDatabase("BookReShare");
             _readers = database.GetCollection<Reader>("reader");
+            _readerService = readerService;
             _configuration = configuration;
             _cryptKey = _configuration["Crypt:key"];
             _cryptIv = _configuration["Crypt:iv"];
@@ -100,7 +102,7 @@ namespace SolidarityBookCatalog.Controllers
                     var readerDto = new
                     {
                         Name = reader.Name,
-                        ReaderNo = reader.StudentId,
+                        ReaderNo = reader.ReaderNo,
                         Type = reader.Type,
                         Phone = reader.Phone,
                         BirthYear = reader.BirthYear,
@@ -141,7 +143,7 @@ namespace SolidarityBookCatalog.Controllers
             {
                 OpenId = dto.OpenId,
                 Name = dto.Name,
-                StudentId = dto.ReaderNo,
+                ReaderNo = dto.ReaderNo,
                 Phone = dto.Phone,
                 BirthYear = dto.BirthYear,
                 Type = dto.Type,
@@ -160,7 +162,7 @@ namespace SolidarityBookCatalog.Controllers
             catch (MongoWriteException ex) when (ex.WriteError.Category == ServerErrorCategory.DuplicateKey)
             {
                 msg.Code = 1;
-                msg.Message = $"微信openId或者学号{reader.StudentId}或手机号{reader.Phone}已存在";
+                msg.Message = $"微信openId或者学号{reader.ReaderNo}或手机号{reader.Phone}已存在";
                 return Ok(msg);
             }
             catch (Exception ex) {
@@ -169,6 +171,16 @@ namespace SolidarityBookCatalog.Controllers
                 return Ok(msg);
             }
         }
+
+        [HttpPost]
+        [Route("search")]
+        public async Task<IActionResult> Search(SearchQueryList list, int rows = 10, int page = 1)
+        {
+           Msg msg = new Msg();
+           msg=await _readerService.SearchAsync(list, rows, page);
+           return Ok(msg);
+        }
+
 
         // PUT api/readers/5
         [HttpPost]
