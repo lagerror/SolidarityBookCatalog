@@ -30,11 +30,16 @@ namespace SolidarityBookCatalog.Controllers
         private  UserService _userService;
         private IConfiguration _configuration;
         private ILogger<UsersController> _logger;
+        private readonly string _cryptKey;
+        private readonly string _cryptIv;
         public UsersController( UserService userService,IConfiguration configuration,ILogger<UsersController> logger)
         { 
             _userService = userService;
             _configuration = configuration;
             _logger = logger;
+
+            _cryptKey = _configuration["Crypt:key"];
+            _cryptIv = _configuration["Crypt:iv"];
         }
         [HttpPost]
         [Route("fun")]
@@ -226,44 +231,29 @@ namespace SolidarityBookCatalog.Controllers
                             ret["Role"] = "admin";
                         }
                         break;
-                    case "postman":
-                    case "manager":
-                        var filterManager = Builders<Manager>.Filter.And(
-                           Builders<Manager>.Filter.Eq("username", login.username),
-                           Builders<Manager>.Filter.Eq("password", login.password)
-                       );
-                        var manager =_userService._managers.Find(filterManager).FirstOrDefault();
-                        if (manager == null)
+                    case "reader":
+                        //校验openId的解密
+                        var openId = Tools.DecryptStringFromBytes_Aes(login.username, _cryptKey, _cryptIv);
+                        if (ret == null)
                         {
-                            msg.Code = 1;
-                            msg.Message = "密码不匹配";
+                            msg.Code = 2;
+                            msg.Message = $"OpenId解密失败";
                             return Ok(msg);
                         }
-                        else
-                        {
-                            ret["Id"] = manager.Id;
-                            ret["UserName"] = manager.UserName;
-                            ret["Role"] =source;
-                        }
-                        break;
-                    
-                    case "reader":
-                        var readerManager = Builders<Manager>.Filter.And(
-                          Builders<Manager>.Filter.Eq("username", login.username),
-                          Builders<Manager>.Filter.Eq("password", login.password)
-                      );
-                        var reader = _userService._managers.Find(readerManager).FirstOrDefault();
+                        login.username = openId;
+
+                        var reader = _userService._readers.Find(x=>x.OpenId==login.username).FirstOrDefault();
                         if (reader == null)
                         {
-                            msg.Code = 1;
-                            msg.Message = "密码不匹配";
+                            msg.Code = 3;
+                            msg.Message = "用户不存在";
                             return Ok(msg);
                         }
                         else
                         {
                             ret["Id"] = reader.Id;
-                            ret["UserName"] = reader.UserName;
-                            ret["Role"] = "reader";
+                            ret["UserName"] = reader.Name;
+                            ret["Role"] = source;
                         }
                         break;
                 }
