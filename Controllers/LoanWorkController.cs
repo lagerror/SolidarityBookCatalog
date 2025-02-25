@@ -2,7 +2,10 @@
 using MongoDB.Driver;
 using SolidarityBookCatalog.Models;
 using SolidarityBookCatalog.Services;
+using System;
+using System.Net;
 using System.Threading.Tasks;
+using System.Web;
 
 // For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
 
@@ -17,11 +20,15 @@ namespace SolidarityBookCatalog.Controllers
         ILogger<LoanWorkController> _logger;
         IMongoCollection<LoanWork> _loanWork;
         IMongoCollection<Reader> _reader;
+        HttpClient _httpClient;
         private readonly string _cryptKey;
         private readonly string _cryptIv;
-        public LoanWorkController(IMongoClient client, IConfiguration configuration,ILogger<LoanWorkController> logger)
+        private readonly string _baseUrl;
+        public LoanWorkController(IMongoClient client, HttpClient httpClient, IConfiguration configuration,ILogger<LoanWorkController> logger)
         {
             _configuration = configuration;
+            _baseUrl = _configuration["Express:BaseUrl"];
+            _httpClient = httpClient;
             var database = client.GetDatabase("BookReShare");
             _loanWork = database.GetCollection<LoanWork>("loanWork");
             _reader = database.GetCollection<Reader>("reader");
@@ -58,11 +65,14 @@ namespace SolidarityBookCatalog.Controllers
         /// <returns></returns>
         [HttpPost]
         [Route("apply")]
-        public  async Task<IActionResult> apply (string readerOpenId,string holdingId,string sourceLocker,string destinationLocker)
+        public  async Task<IActionResult> apply (string readerOpenId,string holdingId,string destinationLocker)
         {
             Msg msg = new Msg();
             try
-            {
+            {//rfWTm26wJZnpQ%252bS0Jgywkd1CwWuzRhO7mTGiI0%252fQZlY%253d  rfWTm26wJZnpQ+S0Jgywkd1CwWuzRhO7mTGiI0/QZlY= oS4N5tzvoJn2uJ7b1PzMJj99JgTw rfWTm26wJZnpQ+bS0Jgywkd1CwWuzRhO7mTGiI0%2fQZlY=    675805eff80692346fa8abe9   675805eff80692346fa8abe9
+                string v3 = WebUtility.UrlDecode(readerOpenId);
+                string v1 = Tools.EncryptStringToBytes_Aes("oS4N5tzvoJn2uJ7b1PzMJj99JgTw", _cryptKey, _cryptIv);
+                string v2 = Tools.DecryptStringFromBytes_Aes(v1, _cryptKey, _cryptIv);
                 //校验openId的解密
                 var ret = Tools.DecryptStringFromBytes_Aes(readerOpenId, _cryptKey, _cryptIv);
                 if (ret == null)
@@ -78,9 +88,8 @@ namespace SolidarityBookCatalog.Controllers
                 loanWork.Application = applicationInfo;
 
                 loanWork.HoldingId = holdingId;
-                loanWork.Status = PublicEnum.CirculationStatus.申请中;
+                loanWork.Status = PublicEnum.CirculationStatus.已申请;
                 loanWork.Application.ReaderOpenId = readerOpenId;
-                loanWork.Application.SourceLocker = sourceLocker;
                 loanWork.Application.DestinationLocker = destinationLocker;
 
                 await _loanWork.InsertOneAsync(loanWork);
@@ -101,12 +110,12 @@ namespace SolidarityBookCatalog.Controllers
         /// </summary>
         /// <param name="applyId">申请事务号</param>
         /// <param name="openId">工作人员</param>
-        /// <param name="lockerNumber">放入哪个柜体</param>
-        /// <param name="cellNumber">哪个柜格</param>
+        /// <param name="lockerNumber">放入哪个柜体,自动获取空余格口</param>
+        
         /// <returns></returns>
         [HttpPost]
         [Route("libraryProcess")]
-        public IActionResult Post(string applyId, string openId, string lockerNumber,string cellNumber)
+        public async Task<IActionResult> Post(string applyId, string openId, string iccid)
         {
             Msg msg = new Msg();
             //校验openId的解密
@@ -147,21 +156,41 @@ namespace SolidarityBookCatalog.Controllers
 
             //建立图书馆人员处理流程节点
             LibraryProcessingInfo libraryProcessingInfo = new LibraryProcessingInfo();
+            //开柜自动分配格口
+            string url = _baseUrl + $"/api/Locker/OpenEmptyCell?iccid={iccid}";
+            HttpResponseMessage response = await _httpClient.GetAsync(url);
+            // 确保HTTP响应状态为200 (OK)
+            if (response.IsSuccessStatusCode)
+            {
+                // 读取响应内容
+                string responseBody = await response.Content.ReadAsStringAsync();
+                Msg msgTemp= System.Text.Json.JsonSerializer.Deserialize<Msg>(responseBody);
+
+                if (msgTemp.Code == 0)
+                {
+                    libraryProcessingInfo.LockerNumber =iccid;   //柜子
+                    libraryProcessingInfo.CellNumber = msgTemp.Message.Split('|')[1];   //格口
+                    apply.Status = PublicEnum.CirculationStatus.图书已找到;    //状态
+                }
+                else
+                {
+                    apply.Status = PublicEnum.CirculationStatus.申请终止;
+                    libraryProcessingInfo.Remark = msgTemp.Message;
+                    msg.Code= 5;
+                    msg.Message += msgTemp.Message;
+                    return Ok(msg);
+                }
+            }
+            else
+            {
+                msg.Code = 6;
+                msg.Message += $"开柜请求发送错误";
+                return Ok(msg);
+            }
+            //将图书馆取书信息加入到流程节点
             apply.LibraryProcessing = libraryProcessingInfo;
-           
-            apply.LibraryProcessing.OperateIP = HttpContext.User.Identity.Name;
-
-            //执行登录，获取TOKEN，
-
-            //查询柜体状态
-
-            //打开空余格口
-
-            //放入后关闭
-
-            //记录打开的柜体和格口
-
-
+            //更新事务
+            await _loanWork.ReplaceOneAsync(x => x.Id == applyId, apply);
 
             return Ok(msg);
         }

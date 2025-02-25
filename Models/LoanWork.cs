@@ -72,8 +72,8 @@ namespace SolidarityBookCatalog.Models
         [BsonElement("depositTime")]
         public DateTime? DepositTime { get; set; }= DateTime.UtcNow;
 
-        [BsonElement("operateIP")]
-        public string? OperateIP { get; set; }
+        [BsonElement("remark")]
+        public string? Remark { get; set; }
     }
 
     // 运输信息嵌套类
