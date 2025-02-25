@@ -83,7 +83,10 @@ namespace SolidarityBookCatalog.Models
         public string CourierOpenId { get; set; }
 
         [BsonElement("pickupTime")]
-        public DateTime? PickupTime { get; set; }
+        public DateTime? PickupTime { get; set; } = DateTime.UtcNow;
+
+        [BsonElement("remark")]
+        public string Remark { get; set; }
     }
 
     // 目的地快递柜信息嵌套类
@@ -99,10 +102,10 @@ namespace SolidarityBookCatalog.Models
         public string CellNumber { get; set; }
 
         [BsonElement("depositTime")]
-        public DateTime? DepositTime { get; set; }
+        public DateTime? DepositTime { get; set; } = DateTime.UtcNow;
 
-        [BsonElement("operateIP")]
-        public string OperateIP { get; set; }
+        [BsonElement("remark")]
+        public string? Remark { get; set; }
     }
 
     // 取书信息嵌套类
@@ -122,6 +125,9 @@ namespace SolidarityBookCatalog.Models
 
         [BsonElement("pickupTime")]
         public DateTime? PickupTime { get; set; }
+
+        [BsonElement("remark")]
+        public string Remark { get; set; }
     }
 
   

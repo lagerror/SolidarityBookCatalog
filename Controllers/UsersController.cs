@@ -7,16 +7,10 @@ using SolidarityBookCatalog.Services;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 using System.Text;
-using Microsoft.AspNetCore.DataProtection.KeyManagement;
-using Elastic.Clients.Elasticsearch;
-using Serilog;
-using System.Text.RegularExpressions;
 using MongoDB.Bson;
-using Elastic.Clients.Elasticsearch.Security;
 using User = SolidarityBookCatalog.Models.User;
-using Microsoft.VisualBasic;
+
 
 // For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
 
