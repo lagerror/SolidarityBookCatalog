@@ -1,6 +1,8 @@
 ﻿using Elastic.Clients.Elasticsearch.Nodes;
 using Microsoft.AspNetCore.Mvc;
+using MongoDB.Bson;
 using MongoDB.Driver;
+using SharpCompress.Readers;
 using SolidarityBookCatalog.Models;
 using SolidarityBookCatalog.Services;
 using System;
@@ -8,6 +10,7 @@ using System.Net;
 using System.Text.Json;
 using System.Threading.Tasks;
 using System.Web;
+using static SolidarityBookCatalog.Services.PublicEnum;
 
 // For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
 
@@ -59,12 +62,90 @@ namespace SolidarityBookCatalog.Controllers
 
         [HttpPost]
         [Route("search")]
-        public async Task<IActionResult> search(SearchQueryList list,int rows=10,int page=1)
+        public async Task<IActionResult> search(string openid, SearchQueryList list,int rows=10,int page=1)
         {
             Msg msg = new Msg();
-            
+            //校验openId的解密，为查询者的openId
+            var ret = Tools.DecryptStringFromBytes_Aes(openid, _cryptKey, _cryptIv);
+            if (ret == null)
+            {
+                msg.Code = 1;
+                msg.Message = $"查询者OpenId解密失败";
+                return Ok(msg);
+            }
+            openid = ret;
+
+
+
+            //查询条件中是否有openid，如果有则解密
+            var uniqueSearchQuery = list.List
+                .SingleOrDefault(sq => sq.Field == "readerOpenId");
+
+            // 如果找到了唯一的对象，则修改它的Keyword
+            if (uniqueSearchQuery != null)
+            {
+                ret = Tools.DecryptStringFromBytes_Aes(uniqueSearchQuery.Keyword, _cryptKey, _cryptIv);
+                if (ret == null)
+                {
+                    msg.Code = 2;
+                    msg.Message = $"被查询者OpenId解密失败";
+                    return Ok(msg);
+                }
+                uniqueSearchQuery.Keyword = ret;
+            }
+           msg= await searchAdmin(list, rows, page);
+
             return Ok(msg);
         }
+        //管理人员查询函数
+        private async Task<Msg> searchAdmin(SearchQueryList list, int rows = 10, int page = 1)
+        {
+            Msg msg = new Msg();
+            try
+            {
+                var builder = Builders<LoanWork>.Filter;
+                var filters = new List<FilterDefinition<LoanWork>>();
+         
+                foreach (var item in list.List)
+                {
+                    switch (item.Field)
+                    {
+                        case "status":
+                            Enum.TryParse<CirculationStatus>(item.Keyword, out var status);
+                            filters.Add(builder.Eq(x => x.Status, status));
+                        break;
+                        case "readerOpenId":
+                            filters.Add(builder.Eq(x => x.Application.ReaderOpenId, item.Keyword));
+                        break;
+                    }
+                   
+                }
+                var finalFilter = filters.Count > 0
+               ? builder.And(filters)
+               : FilterDefinition<LoanWork>.Empty;
+                // 执行查询
+                var total = await _loanWork.CountDocumentsAsync(finalFilter);
+                var results = await _loanWork.Find(finalFilter)
+                    .Skip((page - 1) * rows)
+                    .Limit(rows)
+                    .ToListAsync();
+
+                msg.Code = 0;
+                msg.Message = "查询成功";
+                msg.Data = new
+                {
+                    total = total,
+                    rows = results
+                };
+
+            }
+            catch (Exception ex)
+            {
+                msg.Code = 100;
+                msg.Message = ex.Message;
+            }
+            return msg;
+        }   
 
 
 
