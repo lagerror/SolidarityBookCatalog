@@ -20,8 +20,6 @@ namespace SolidarityBookCatalog.Services
         Task<string> GetJsapiTicketAsync();
         Task<string> GetJsapiSignature(string cryptOpenid,string url);
         Task<WeChatUserInfoResponse> GetUserInfoAsync(string accessToken,string openid);
-        public Tuple<bool, string> EncryptOpenId(string openid);
-        public Tuple<bool, string> DecryptOpenId(string cryptOpenid);
         public Task<bool> SendTemplateMessageAsync(string openid, string redirectUrl, object data, string templateId = "Y3ry7I_3kr1o-q7_biGMWNuys1M3pQva_H6m89yz88Y");
 
 
@@ -39,8 +37,6 @@ namespace SolidarityBookCatalog.Services
         // 微信 Token 的配置参数（从 appsettings.json 读取）
         private readonly string _appId;
         private readonly string _appSecret;
-        private readonly string _cryptKey;
-        private readonly string _cryptIv;
 
         public WeChatTokenService(IHttpClientFactory httpClientFactory,IMemoryCache cache,IConfiguration configuration,ILogger<WeChatTokenService> logger)
         {
@@ -52,9 +48,6 @@ namespace SolidarityBookCatalog.Services
             // 从配置中读取微信参数
             _appId = configuration["WeChat:AppId"] ?? throw new ArgumentNullException("WeChat:AppId");
             _appSecret = configuration["WeChat:AppSecret"] ?? throw new ArgumentNullException("WeChat:AppSecret");
-
-            _cryptKey = _configuration["Crypt:key"];
-            _cryptIv = _configuration["Crypt:iv"];
         }
 
         //发送留言提醒，只有在用户关注公众号后才能发送，文档地址：https://developers.weixin.qq.com/doc/offiaccount/Message_Management/Template_Message_Interface.html
@@ -279,31 +272,6 @@ namespace SolidarityBookCatalog.Services
         public void Dispose()
         {
             _semaphore?.Dispose();
-        }
-
-        //以下是自定义函数
-        //加解密openid
-        public Tuple<bool, string> EncryptOpenId(string openid)
-        {
-            Tuple<bool, string> result = new Tuple<bool, string>(false, "");
-            string cryptOpenId = Tools.EncryptStringToBytes_Aes(openid, _cryptKey, _cryptIv);
-            
-            if (cryptOpenId != null)
-            {
-                result = new Tuple<bool, string>(true, cryptOpenId);
-            }
-            return result;
-        }
-        public Tuple<bool, string> DecryptOpenId(string cryptOpenid)
-        {
-            Tuple<bool, string> result = new Tuple<bool, string>(false, "");
-           
-            string openId = Tools.DecryptStringFromBytes_Aes(cryptOpenid, _cryptKey, _cryptIv);
-            if (openId != null)
-            {
-                result = new Tuple<bool, string>(true, openId);
-            }
-            return result;
         }
 
         public Task<WeChatUserInfoResponse> GetUserInfoAsync(string openid)

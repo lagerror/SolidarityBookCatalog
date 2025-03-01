@@ -26,26 +26,29 @@ namespace SolidarityBookCatalog.Controllers
         ILogger<LoanWorkController> _logger;
         IMongoCollection<LoanWork> _loanWork;
         IMongoCollection<Reader> _reader;
+        LoanWorkService _loanWorkService;
+        private readonly ToolService _toolService;
         HttpClient _httpClient;
-        private readonly string _cryptKey;
-        private readonly string _cryptIv;
+
         private readonly string _baseUrl;
-        public LoanWorkController(IMongoClient client, HttpClient httpClient, IConfiguration configuration,ILogger<LoanWorkController> logger)
+        public LoanWorkController(IMongoClient client,LoanWorkService loanWorkService, HttpClient httpClient, IConfiguration configuration,ToolService toolService, ILogger<LoanWorkController> logger)
         {
             _configuration = configuration;
+            _toolService = toolService;
             _baseUrl = _configuration["Express:BaseUrl"];
             _httpClient = httpClient;
             var database = client.GetDatabase("BookReShare");
             _loanWork = database.GetCollection<LoanWork>("loanWork");
             _reader = database.GetCollection<Reader>("reader");
+            _loanWorkService= loanWorkService;
+
             _logger = logger;
-            _cryptKey = _configuration["Crypt:key"];
-            _cryptIv = _configuration["Crypt:iv"];
+
         }
 
         // GET: api/<LoanWorkController>
         [HttpGet]
-        public IActionResult fun(string act,string pars)
+        public async Task<IActionResult> fun(string act,string pars)
         {
             Msg msg = new Msg();
             switch (act)
@@ -56,6 +59,9 @@ namespace SolidarityBookCatalog.Controllers
                     var indexModel = new CreateIndexModel<LoanWork>(indexKeysDefinition, indexOptions);
                     _loanWork.Indexes.CreateOneAsync(indexModel);
                     break;
+                case "getReaderDetail":
+                    msg.Data=await _loanWorkService.getReaderDetailAsync(pars);
+                    break;
             }
 
                 return Ok(msg);
@@ -63,20 +69,21 @@ namespace SolidarityBookCatalog.Controllers
 
         [HttpPost]
         [Route("search")]
-        public async Task<IActionResult> search(string openid, SearchQueryList list,int rows=10,int page=1)
+        public async Task<IActionResult> search(string openId, SearchQueryList list,int rows=10,int page=1)
         {
             Msg msg = new Msg();
             //校验openId的解密，为查询者的openId
-            var ret = Tools.DecryptStringFromBytes_Aes(openid, _cryptKey, _cryptIv);
-            if (ret == null)
+            var ret = _toolService.DeCryptOpenId(openId);
+            if (!ret.Item1)
             {
-                msg.Code = 1;
-                msg.Message = $"查询者OpenId解密失败";
+                msg.Code = 3;
+                msg.Message = $"OpenId解密失败";
                 return Ok(msg);
             }
-            openid = ret;
+            openId = ret.Item2;
+
             //根据查询者OPENID查询读者信息，判断是否有权限和角色
-            var reader = _reader.FindAsync<Reader>(x => x.OpenId == openid).Result.FirstOrDefault();
+            var reader = _reader.FindAsync<Reader>(x => x.OpenId == openId).Result.FirstOrDefault();
 
             if (reader == null)
             {
@@ -93,14 +100,15 @@ namespace SolidarityBookCatalog.Controllers
             // 如果找到了唯一的对象，则修改它的Keyword
             if (uniqueSearchQuery != null)
             {
-                ret = Tools.DecryptStringFromBytes_Aes(uniqueSearchQuery.Keyword, _cryptKey, _cryptIv);
-                if (ret == null)
+               
+                ret =_toolService.DeCryptOpenId(uniqueSearchQuery.Keyword);
+                if (!ret.Item1)
                 {
                     msg.Code = 2;
                     msg.Message = $"被查询者OpenId解密失败";
                     return Ok(msg);
                 }
-                uniqueSearchQuery.Keyword = ret;
+                uniqueSearchQuery.Keyword = ret.Item2;
             }
 
             switch (reader.Type)
@@ -278,7 +286,7 @@ namespace SolidarityBookCatalog.Controllers
         /// <returns></returns>
         [HttpPost]
         [Route("apply")]
-        public  async Task<IActionResult> apply (string readerOpenId= "rfWTm26wJZnpQ+S0Jgywkd1CwWuzRhO7mTGiI0/QZlY=", string holdingId = " 675805eff80692346fa8abe9", string destinationLocker = "898608341523D0678923")
+        public  async Task<IActionResult> apply (string readerOpenId= "rfWTm26wJZnpQ+S0JgywkZPQUU59YMTdoGVAEzPnfC2epRw1ZuI8EqIjbGPV8by9", string holdingId = "675805eff80692346fa8abe9", string destinationLocker = "898608341523D0678886")
         {
             Msg msg = new Msg();
             try
@@ -287,23 +295,31 @@ namespace SolidarityBookCatalog.Controllers
                 //string v1 = Tools.EncryptStringToBytes_Aes("oS4N5tzvoJn2uJ7b1PzMJj99JgTw", _cryptKey, _cryptIv);
                 //string v2 = Tools.DecryptStringFromBytes_Aes(v1, _cryptKey, _cryptIv);
                 //校验openId的解密
-                var ret = Tools.DecryptStringFromBytes_Aes(readerOpenId, _cryptKey, _cryptIv);
-                if (ret == null)
+               
+                var ret=_toolService.DeCryptOpenId(readerOpenId);
+                if (!ret.Item1)
                 {
                     msg.Code = 3;
                     msg.Message = $"OpenId解密失败";
                     return Ok(msg);
                 }
-                readerOpenId = ret;
+                readerOpenId = ret.Item2;
 
                 LoanWork loanWork = new LoanWork();
+                loanWork.HoldingDetail=await _loanWorkService.getHoldingDetailAsync(holdingId);
                 ApplicationInfo applicationInfo = new ApplicationInfo();
                 loanWork.Application = applicationInfo;
 
                 loanWork.HoldingId = holdingId;
                 loanWork.Status = PublicEnum.CirculationStatus.已申请;
                 loanWork.Application.ReaderOpenId = readerOpenId;
+                //申请者详细信息
+                loanWork.Application.ReaderDetail = await _loanWorkService.getReaderDetailAsync(readerOpenId);
                 loanWork.Application.DestinationLocker = destinationLocker;
+                //目的快递柜详细信息
+                loanWork.Application.DestinationLockerDetail =await _loanWorkService.getDestinationLockerDetailAsync(destinationLocker);
+
+
 
                 await _loanWork.InsertOneAsync(loanWork);
 
@@ -327,20 +343,19 @@ namespace SolidarityBookCatalog.Controllers
         /// <returns></returns>
         [HttpPost]
         [Route("libraryProcess")]
-        public async Task<IActionResult> libraryProcess(string applyId= "67becdce317cb768ee2a8fc2", string openId = "rfWTm26wJZnpQ+S0Jgywkd1CwWuzRhO7mTGiI0/QZlY=", string iccid = "898608341523D0678923")
+        public async Task<IActionResult> libraryProcess(string applyId= "67c30b1bf80110a819c18fce", string openId = "rfWTm26wJZnpQ+S0JgywkZPQUU59YMTdoGVAEzPnfC2epRw1ZuI8EqIjbGPV8by9", string iccid = "898608341523D0678886")
         {
-            //测试数据  67bdb03ff112ee131abf4c32 rfWTm26wJZnpQ+S0Jgywkd1CwWuzRhO7mTGiI0/QZlY=  898608341523D0678923
-
             Msg msg = new Msg();
             //校验openId的解密
-            var ret = Tools.DecryptStringFromBytes_Aes(openId, _cryptKey, _cryptIv);
-            if (ret == null)
+           
+            var ret =_toolService.DeCryptOpenId(openId);
+            if (!ret.Item1)
             {
                 msg.Code = 1;
                 msg.Message = $"OpenId解密失败";
                 return Ok(msg);
             }
-            openId = ret;
+            openId = ret.Item2;
 
             //判断该人员是否为图书馆找书工作人员
             var reader= _reader.FindAsync<Reader>(x => x.OpenId == openId).Result.FirstOrDefault();
@@ -420,6 +435,8 @@ namespace SolidarityBookCatalog.Controllers
                 return Ok(msg);
             }
             //将图书馆取书信息加入到流程节点
+            libraryProcessingInfo.LibrarianDetail = await _loanWorkService.getLibrarianDetailAsync(openId);
+            
             apply.LibraryProcessing = libraryProcessingInfo;
             //更新事务
            var result=  await _loanWork.ReplaceOneAsync(x => x.Id == applyId, apply);
@@ -452,18 +469,18 @@ namespace SolidarityBookCatalog.Controllers
         /// <returns></returns>
         [HttpPost]
         [Route("transport")]
-        public async Task<IActionResult> transport(string applyId = "67becdce317cb768ee2a8fc2", string openId = "rfWTm26wJZnpQ+S0Jgywkd1CwWuzRhO7mTGiI0/QZlY=",string remark="快递员从快递柜取书成功")
+        public async Task<IActionResult> transport(string applyId = "67c30b1bf80110a819c18fce", string openId = "rfWTm26wJZnpQ+S0JgywkZPQUU59YMTdoGVAEzPnfC2epRw1ZuI8EqIjbGPV8by9", string remark="快递员从快递柜取书成功")
         {
             Msg msg = new Msg();
             //校验openId的解密
-            var ret = Tools.DecryptStringFromBytes_Aes(openId, _cryptKey, _cryptIv);
-            if (ret == null)
+            var ret =_toolService.DeCryptOpenId(openId);
+            if (!ret.Item1)
             {
                 msg.Code = 1;
                 msg.Message = $"OpenId解密失败";
                 return Ok(msg);
             }
-            openId = ret;
+            openId = ret.Item2;
 
             //判断该人员是否为图书馆找书工作人员
             var reader = _reader.FindAsync<Reader>(x => x.OpenId == openId).Result.FirstOrDefault();
@@ -541,6 +558,7 @@ namespace SolidarityBookCatalog.Controllers
             }
 
             //将图书馆取书信息加入到流程节点
+            transportInfo.CourierDetail=await _loanWorkService.getCourierDetailAsync(openId);
             apply.Transport = transportInfo;
             //更新事务
             var result = await _loanWork.ReplaceOneAsync(x => x.Id == applyId, apply);
@@ -573,20 +591,21 @@ namespace SolidarityBookCatalog.Controllers
         /// <returns></returns>
         [HttpPost]
         [Route("DestinationLocker")]
-        public async Task<IActionResult> DestinationLocker(string applyId = "67becdce317cb768ee2a8fc2", string openId = "rfWTm26wJZnpQ+S0Jgywkd1CwWuzRhO7mTGiI0/QZlY=", string remark = "快递员存入快递柜成功")
+        public async Task<IActionResult> DestinationLocker(string applyId = "67c30b1bf80110a819c18fce", string openId = "rfWTm26wJZnpQ+S0JgywkZPQUU59YMTdoGVAEzPnfC2epRw1ZuI8EqIjbGPV8by9", string remark = "快递员存入快递柜成功")
         {
             Msg msg = new Msg();
             //校验openId的解密
-            var ret = Tools.DecryptStringFromBytes_Aes(openId, _cryptKey, _cryptIv);
-            if (ret == null)
+
+            var ret = _toolService.DeCryptOpenId(openId);
+            if (!ret.Item1)
             {
                 msg.Code = 1;
                 msg.Message = $"OpenId解密失败";
                 return Ok(msg);
             }
-            openId = ret;
+            openId = ret.Item2;
 
-            //判断该人员是否为图书馆找书工作人员
+            //判断该人员是否快递工作人员
             var reader = _reader.FindAsync<Reader>(x => x.OpenId == openId).Result.FirstOrDefault();
             if (reader == null)
             {
@@ -668,6 +687,8 @@ namespace SolidarityBookCatalog.Controllers
             }
 
             //将图书馆取书信息加入到流程节点
+            destinationLockerInfo.CourierDetail = await _loanWorkService.getCourierDetailAsync(openId);
+
             apply.DestinationLocker = destinationLockerInfo;
             //更新事务
             var result = await _loanWork.ReplaceOneAsync(x => x.Id == applyId, apply);
@@ -702,18 +723,19 @@ namespace SolidarityBookCatalog.Controllers
         /// <returns></returns>
         [HttpPost]
         [Route("Pickup")]
-        public async Task<IActionResult> Pickup(string applyId = "67becdce317cb768ee2a8fc2", string openId = "rfWTm26wJZnpQ+S0Jgywkd1CwWuzRhO7mTGiI0/QZlY=", string remark = "读者取书成功")
+        public async Task<IActionResult> Pickup(string applyId = "67c30b1bf80110a819c18fce", string openId = "rfWTm26wJZnpQ+S0JgywkZPQUU59YMTdoGVAEzPnfC2epRw1ZuI8EqIjbGPV8by9", string remark = "读者取书成功")
         {
             Msg msg = new Msg();
             //校验openId的解密
-            var ret = Tools.DecryptStringFromBytes_Aes(openId, _cryptKey, _cryptIv);
-            if (ret == null)
+            
+            var ret = _toolService.DeCryptOpenId(openId);
+            if (!ret.Item1)
             {
                 msg.Code = 1;
                 msg.Message = $"OpenId解密失败";
                 return Ok(msg);
             }
-            openId = ret;
+            openId = ret.Item2;
 
             //判断该人员是否为注册读者
             var reader = _reader.FindAsync<Reader>(x => x.OpenId == openId).Result.FirstOrDefault();
@@ -751,7 +773,7 @@ namespace SolidarityBookCatalog.Controllers
                 return Ok(msg);
             }
 
-            //建立快递人员处理流程节点
+            //建立取书人处理流程节点
             PickupInfo pickupInfo = new PickupInfo();
 
             //打开指定格口
@@ -809,7 +831,7 @@ namespace SolidarityBookCatalog.Controllers
                 msg.Message = "申请者取书成功";
                 msg.Data = new
                 {
-                    ReaderOpenId = pickupInfo.ReaderOpenId, 
+                    ReaderOpenId =await _loanWorkService.getReaderDetailAsync( pickupInfo.ReaderOpenId), 
                     Remark = pickupInfo.Remark,
                     PickupTime = pickupInfo.PickupTime,
                     LockerNumber = pickupInfo.LockerNumber,

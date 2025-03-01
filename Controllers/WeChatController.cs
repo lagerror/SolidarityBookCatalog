@@ -15,15 +15,17 @@ namespace SolidarityBookCatalog.Controllers
     public class WeChatController : ControllerBase
     {
         private IMongoCollection<Reader> _readers;
+        private ToolService _toolService;
         IConfiguration _configuration;
         IWeChatTokenService _weChatTokenService;
 
-        public WeChatController(IConfiguration configuration,IWeChatTokenService weChatTokenService,IMongoClient mongoClient)
+        public WeChatController(IConfiguration configuration,IWeChatTokenService weChatTokenService,ToolService toolService, IMongoClient mongoClient)
         {
             var database = mongoClient.GetDatabase("BookReShare");
             _readers = database.GetCollection<Reader>("reader");
             _configuration = configuration;
             _weChatTokenService = weChatTokenService;
+            _toolService = toolService;
         }
         [HttpGet]
         public string Get(string echoStr, string signature, string timestamp, string nonce)
@@ -72,12 +74,13 @@ namespace SolidarityBookCatalog.Controllers
                 case "EncryptOpenId":
                     msg.Code = 0;
                     msg.Message = "获取成功";
-                    msg.Data = _weChatTokenService.EncryptOpenId(pars).Item2;
+                    
+                    msg.Data = _toolService.EnCryptOPenId(pars).Item2;
                     break;
                 case "DecryptOpenId":
                     msg.Code = 0;
                     msg.Message = "获取成功";
-                    msg.Data = _weChatTokenService.DecryptOpenId(pars).Item2;
+                    msg.Data = _toolService.DeCryptOpenId(pars).Item2;
                     break;
                 case "SendTemplateMessageAsync":
                    var data = new
@@ -106,7 +109,7 @@ namespace SolidarityBookCatalog.Controllers
                     //查询数据库是否存在该用户
                     var reader = _readers.Find(r => r.OpenId == openId).FirstOrDefault();
                     //加密openid并编码
-                    openId = _weChatTokenService.EncryptOpenId(openId).Item2;
+                    openId = _toolService.EnCryptOPenId(openId).Item2;
                     openId = HttpUtility.UrlEncode(openId);
                     if (reader == null)  //注册
                     {
@@ -141,7 +144,7 @@ namespace SolidarityBookCatalog.Controllers
         public async Task<IActionResult> GetJsSign(string cryptOpenId)
         {
             Msg msg = new Msg();
-            var tuple = _weChatTokenService.DecryptOpenId(cryptOpenId);
+            var tuple = _toolService.DeCryptOpenId(cryptOpenId);
             if (!tuple.Item1)
             {
                 msg.Code = 1;

@@ -24,7 +24,7 @@ namespace SolidarityBookCatalog.Services
             _users = database.GetCollection<User>("user");
             _books = database.GetCollection<Biblios>("biblios");
             _holdings= database.GetCollection<Holding>("holding");
-            _readers = database.GetCollection<Reader>("readers");
+            _readers = database.GetCollection<Reader>("reader");
         }
         public bool insert(User user) { 
             bool flag=false;

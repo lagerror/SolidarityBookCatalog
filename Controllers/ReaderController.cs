@@ -16,15 +16,17 @@ namespace SolidarityBookCatalog.Controllers
     {
         private readonly IMongoCollection<Reader> _readers;
         private readonly ReaderService _readerService;
+        private readonly ToolService _toolService;  
         private readonly IConfiguration _configuration;
         private readonly string _cryptKey;
         private readonly string _cryptIv;
-        public ReaderController(IMongoClient client,IConfiguration configuration,ReaderService readerService) 
+        public ReaderController(IMongoClient client,IConfiguration configuration,ReaderService readerService,ToolService toolService) 
         {
             var database = client.GetDatabase("BookReShare");
             _readers = database.GetCollection<Reader>("reader");
             _readerService = readerService;
             _configuration = configuration;
+            _toolService = toolService;
             _cryptKey = _configuration["Crypt:key"];
             _cryptIv = _configuration["Crypt:iv"];
         }
@@ -81,7 +83,7 @@ namespace SolidarityBookCatalog.Controllers
             try
             {
                 //校验openId的解密
-                var ret = DecryptOpenId(openid);
+                var ret = _toolService.DeCryptOpenId(openid);
                 if (!ret.Item1)
                 {
                     msg.Code = 3;
@@ -131,7 +133,7 @@ namespace SolidarityBookCatalog.Controllers
             Console.WriteLine(dto.OpenId);
             dto.OpenId = HttpUtility.UrlDecode(dto.OpenId);
             //校验openId的解密
-            var ret = DecryptOpenId(dto.OpenId);
+            var ret = _toolService.DeCryptOpenId(dto.OpenId);
             if (!ret.Item1)
             {
                 msg.Code = 3;
@@ -190,7 +192,7 @@ namespace SolidarityBookCatalog.Controllers
         {
             Msg msg = new Msg();
             //校验openId的解密
-            var ret = DecryptOpenId(openId);
+            var ret = _toolService.DeCryptOpenId(openId);
             if (!ret.Item1)
             {
                 msg.Code = 3;
@@ -198,6 +200,7 @@ namespace SolidarityBookCatalog.Controllers
                 return Ok(msg);
             }
             openId=ret.Item2;
+
             var updateDefinitionBuilder = Builders<Reader>.Update;
             var updates = new List<UpdateDefinition<Reader>>();
             try
@@ -266,7 +269,7 @@ namespace SolidarityBookCatalog.Controllers
         {
             var msg = new Msg();
             //校验openId的解密
-            var ret = DecryptOpenId(openId);
+            var ret = _toolService.DeCryptOpenId(openId);
             if (!ret.Item1)
             {
                 msg.Code = 3;
@@ -293,30 +296,6 @@ namespace SolidarityBookCatalog.Controllers
                 msg.Message = ex.Message;   
             }
             return Ok(msg);
-        }
-
-
-        //以下是自定义函数
-        //加解密openid
-        private Tuple<bool,string> EncryptOpenId(string openId)
-        {
-            Tuple<bool, string> result = new Tuple<bool, string>(false, "");
-            string cryptOpenId = Tools.EncryptStringToBytes_Aes(openId, _cryptKey, _cryptIv);
-            if (cryptOpenId != null)
-            {
-                result = new Tuple<bool, string>(true, cryptOpenId);
-            }
-            return result;
-        }
-        private Tuple<bool, string> DecryptOpenId(string cryptOpenId)
-        {
-            Tuple<bool, string> result = new Tuple<bool, string>(false, "");
-            string openId = Tools.DecryptStringFromBytes_Aes(cryptOpenId, _cryptKey, _cryptIv);
-            if (openId != null)
-            {
-                result = new Tuple<bool, string>(true, openId);
-            }
-            return result;
         }
     }
 }

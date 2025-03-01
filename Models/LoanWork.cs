@@ -15,6 +15,10 @@ namespace SolidarityBookCatalog.Models
         [BsonElement("holdingId")]
         public string HoldingId { get; set; }
 
+        // 所借图书详细信息
+        [BsonElement("holdingDetail")]
+        public dynamic? HoldingDetail { get; set; }
+
         // 申请阶段信息
         [BsonElement("application")]
         public ApplicationInfo? Application { get; set; }
@@ -47,6 +51,10 @@ namespace SolidarityBookCatalog.Models
         [BsonElement("readerOpenId")]
         public string ReaderOpenId { get; set; }
 
+        // 申请者详细信息
+        [BsonElement("readerDetail")]
+        public dynamic? ReaderDetail { get; set; }
+
         [BsonElement("applicationTime")]
         public DateTime ApplicationTime { get; set; } = DateTime.UtcNow;
 
@@ -55,6 +63,10 @@ namespace SolidarityBookCatalog.Models
 
         [BsonElement("destinationLocker")]
         public string DestinationLocker { get; set; }
+
+        //目的地快递柜信息
+        [BsonElement("destinationLockerDetail")]
+        public dynamic? DestinationLockerDetail { get; set; }
     }
 
     // 图书馆处理信息嵌套类
@@ -63,11 +75,20 @@ namespace SolidarityBookCatalog.Models
         [BsonElement("librarianOpenId")]
         public string LibrarianOpenId { get; set; }
 
+        //找书人员详细信息
+        [BsonElement("librarianDetail")]
+        public dynamic? LibrarianDetail { get; set; }
+
+
         [BsonElement("lockerNumber")]
         public string LockerNumber { get; set; }
 
         [BsonElement("cellNumber")]
         public string CellNumber { get; set; }
+
+        ////找书人员放置快递柜的详细信息
+        [BsonElement("lockerDetail")]
+        public dynamic? LockerDetail { get; set; }
 
         [BsonElement("depositTime")]
         public DateTime? DepositTime { get; set; }= DateTime.UtcNow;
@@ -82,6 +103,9 @@ namespace SolidarityBookCatalog.Models
         [BsonElement("courierOpenId")]
         public string CourierOpenId { get; set; }
 
+        [BsonElement("courierDetail")]
+        public dynamic? CourierDetail { get; set; }
+
         [BsonElement("pickupTime")]
         public DateTime? PickupTime { get; set; } = DateTime.UtcNow;
 
@@ -95,11 +119,18 @@ namespace SolidarityBookCatalog.Models
         [BsonElement("courierOpenId")]
         public string CourierOpenId { get; set; }
 
+        [BsonElement("courierDetail")]
+        public dynamic? CourierDetail { get; set; }
+
         [BsonElement("lockerNumber")]
         public string LockerNumber { get; set; }
 
         [BsonElement("cellNumber")]
         public string CellNumber { get; set; }
+        
+        //放置快递柜详细信息
+        [BsonElement("lockerDetail")]
+        public dynamic? LockerDetail { get; set; }
 
         [BsonElement("depositTime")]
         public DateTime? DepositTime { get; set; } = DateTime.UtcNow;

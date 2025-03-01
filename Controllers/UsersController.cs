@@ -22,13 +22,15 @@ namespace SolidarityBookCatalog.Controllers
     {
         // GET: api/<UsersController>
         private  UserService _userService;
+        private ToolService _toolService;   
         private IConfiguration _configuration;
         private ILogger<UsersController> _logger;
         private readonly string _cryptKey;
         private readonly string _cryptIv;
-        public UsersController( UserService userService,IConfiguration configuration,ILogger<UsersController> logger)
+        public UsersController( UserService userService,IConfiguration configuration,ToolService toolService, ILogger<UsersController> logger)
         { 
             _userService = userService;
+            _toolService = toolService; 
             _configuration = configuration;
             _logger = logger;
 
@@ -227,14 +229,15 @@ namespace SolidarityBookCatalog.Controllers
                         break;
                     case "reader":
                         //校验openId的解密
-                        var openId = Tools.DecryptStringFromBytes_Aes(login.username, _cryptKey, _cryptIv);
-                        if (ret == null)
+                        var temp=_toolService.DeCryptOpenId(login.username);
+
+                        if (!temp.Item1)
                         {
                             msg.Code = 2;
                             msg.Message = $"OpenId解密失败";
                             return Ok(msg);
                         }
-                        login.username = openId;
+                        login.username = temp.Item2;
 
                         var reader = _userService._readers.Find(x=>x.OpenId==login.username).FirstOrDefault();
                         if (reader == null)
