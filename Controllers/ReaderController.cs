@@ -183,7 +183,6 @@ namespace SolidarityBookCatalog.Controllers
            return Ok(msg);
         }
 
-
         // PUT api/readers/5
         [HttpPost]
         [Authorize(Policy = "ManagerOrReader")]
@@ -226,7 +225,7 @@ namespace SolidarityBookCatalog.Controllers
                     }
                 }
                 // 将所有更新定义组合成一个更新定义
-                var combinedUpdateDefinition = updateDefinitionBuilder.Combine(updates);
+                //var combinedUpdateDefinition = updateDefinitionBuilder.Combine(updates);
 
                 // 如果没有需要更新的字段，直接返回
                 if (updates.Count > 0)
@@ -260,6 +259,35 @@ namespace SolidarityBookCatalog.Controllers
 
             return Ok(msg);
         }
+
+        //管理人员在读者验证后将有效位置位
+        [HttpPost]
+        [Route("Audit")]
+        [Authorize(Policy = "AdminOrManager")]
+        public async Task<IActionResult> Audit(string id,bool flag)
+        {
+            Msg msg = new Msg();
+            var name = HttpContext.User.Identity?.Name;
+            var updateDefinitionBuilder = Builders<Reader>.Update.Set(x=>x.IsValid,!flag)
+                        .Set(x=>x.Auditor,name)
+                        .Set(x=>x.AuditDate,DateTime.UtcNow);
+
+            var filter = Builders<Reader>.Filter.Eq(x => x.Id, id);
+            var result = await _readers.UpdateOneAsync(filter, updateDefinitionBuilder);
+            if (result.IsAcknowledged && result.ModifiedCount > 0)
+            {
+                msg.Code = 0;
+                msg.Message = $"{id}有效性修改成功";
+            }
+            else
+            {
+                msg.Code = 1;
+                msg.Message = $"{id}有效性修改失败"; 
+            }
+
+            return Ok(msg);
+        }
+
 
         // DELETE api/readers/5
         [HttpGet]

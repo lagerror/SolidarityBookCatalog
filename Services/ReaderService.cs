@@ -8,7 +8,7 @@ namespace SolidarityBookCatalog.Services
     {
         public readonly IMongoCollection<Reader> _readers;
 
-        public ReaderService(IConfiguration config,IMongoClient client)
+        public ReaderService(IConfiguration config, IMongoClient client)
         {
             var database = client.GetDatabase("BookReShare");
             _readers = database.GetCollection<Reader>("reader");
@@ -25,15 +25,22 @@ namespace SolidarityBookCatalog.Services
                 if (item.Field == "Phone")
                 {
                     filters.Add(filterBuilder.Regex(d => d.Phone, new BsonRegularExpression(item.Keyword, "i")));
-                }else if (item.Field == "Name")
+                }
+                else if (item.Field == "Name")
                 {
                     filters.Add(filterBuilder.Regex(d => d.Name, new BsonRegularExpression(item.Keyword, "i")));
-                }else if (item.Field == "ReaderNo")
+                }
+                else if (item.Field == "ReaderNo")
                 {
                     filters.Add(filterBuilder.Eq(x => x.ReaderNo, item.Keyword));
-                }else if(item.Field == "Library")
+                }
+                else if (item.Field == "Library")
                 {
                     filters.Add(filterBuilder.Eq(x => x.Library, item.Keyword));
+                }
+                else if (item.Field == "IsValid")
+                {
+                    filters.Add(filterBuilder.Eq(x => x.IsValid, bool.Parse(item.Keyword)));
                 }
 
             }

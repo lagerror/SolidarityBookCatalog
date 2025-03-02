@@ -83,12 +83,12 @@ namespace SolidarityBookCatalog.Controllers
             openId = ret.Item2;
 
             //根据查询者OPENID查询读者信息，判断是否有权限和角色
-            var reader = _reader.FindAsync<Reader>(x => x.OpenId == openId).Result.FirstOrDefault();
+            var reader = _reader.FindAsync<Reader>(x => x.OpenId == openId & x.IsValid==true).Result.FirstOrDefault();
 
             if (reader == null)
             {
                 msg.Code = 2;
-                msg.Message = "查询者没有找到";
+                msg.Message = "查询者没有找到或者不是有效状态";
                 return Ok(msg);
             }
 
@@ -841,8 +841,5 @@ namespace SolidarityBookCatalog.Controllers
 
             return Ok(msg);
         }
-
-
-
     }
 }
