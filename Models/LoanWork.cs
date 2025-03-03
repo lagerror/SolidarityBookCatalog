@@ -39,6 +39,9 @@ namespace SolidarityBookCatalog.Models
         [BsonElement("pickup")]
         public PickupInfo? Pickup { get; set; }
 
+
+
+
         // 流程状态
         [BsonElement("status")]
         [BsonRepresentation(BsonType.String)]

@@ -8,10 +8,12 @@ using System.Web;
 using MongoDB.Bson.IO;
 using SolidarityBookCatalog.Models;
 using static System.Runtime.InteropServices.JavaScript.JSType;
+using static Microsoft.Extensions.Logging.EventSource.LoggingEventSource;
+using System.Collections.Generic;
 
 namespace SolidarityBookCatalog.Services
 {
-    public interface IWeChatTokenService
+    public interface IWeChatService
     {
         //获取访问令牌
         Task<string> GetTokenAsync();
@@ -20,17 +22,14 @@ namespace SolidarityBookCatalog.Services
         Task<string> GetJsapiTicketAsync();
         Task<string> GetJsapiSignature(string cryptOpenid,string url);
         Task<WeChatUserInfoResponse> GetUserInfoAsync(string accessToken,string openid);
-        public Task<bool> SendTemplateMessageAsync(string openid, string redirectUrl, object data, string templateId = "Y3ry7I_3kr1o-q7_biGMWNuys1M3pQva_H6m89yz88Y");
-
-
-
+        public Task<bool> SendTemplateMessageAsync(string act, string openid, string redirectUrl, object data, string templateId = "Y3ry7I_3kr1o-q7_biGMWNuys1M3pQva_H6m89yz88Y");
     }
 
-    public class WeChatTokenService : IWeChatTokenService, IDisposable
+    public class WeChatService : IWeChatService, IDisposable
     {
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly IMemoryCache _cache;
-        private readonly ILogger<WeChatTokenService> _logger;
+        private readonly ILogger<WeChatService> _logger;
         private readonly IConfiguration _configuration; 
         private readonly SemaphoreSlim _semaphore = new SemaphoreSlim(1, 1); // 确保线程安全
 
@@ -38,7 +37,7 @@ namespace SolidarityBookCatalog.Services
         private readonly string _appId;
         private readonly string _appSecret;
 
-        public WeChatTokenService(IHttpClientFactory httpClientFactory,IMemoryCache cache,IConfiguration configuration,ILogger<WeChatTokenService> logger)
+        public WeChatService(IHttpClientFactory httpClientFactory,IMemoryCache cache,IConfiguration configuration,ILogger<WeChatService> logger)
         {
             _httpClientFactory = httpClientFactory;
             _cache = cache;
@@ -52,10 +51,55 @@ namespace SolidarityBookCatalog.Services
 
         //发送留言提醒，只有在用户关注公众号后才能发送，文档地址：https://developers.weixin.qq.com/doc/offiaccount/Message_Management/Template_Message_Interface.html
         //文字两行，一行20个字，最多5行
-        public async Task<bool> SendTemplateMessageAsync(string openid, string redirectUrl, object odata, string templateId = "X7AKgVggnJgst45K9AddUthvpr4428ZaaXtk-cNaEOw")
+        public async Task<bool> SendTemplateMessageAsync(string act, string openid, string redirectUrl, object odata, string templateId = "X7AKgVggnJgst45K9AddUthvpr4428ZaaXtk-cNaEOw")
         {
             string accessToken= await GetTokenAsync();
             string url = $"https://api.weixin.qq.com/cgi-bin/message/template/send?access_token={accessToken}";
+            switch (act)
+            {
+                //申请
+                case "apply":
+                    templateId = "DidJuByMbu4ocgWM5uLdu3Bb_J9NEzExdSuAN2lQDT4";
+                   
+                    break;
+                //借书
+                case "loan":
+                    templateId = "jlokyJVUwOsXzio09VPt4TSdGELfgBxfOOF9SYIpFY0";
+                    
+                    /*{ { first.DATA} }
+                    读者姓名：{ { keyword1.DATA} }
+                    图书题名：{ { keyword2.DATA} }
+                    图书条码：{ { keyword3.DATA} }
+                    借书日期：{ { keyword4.DATA} }
+                    应还日期：{ { keyword5.DATA} }
+                    { { remark.DATA} }
+                    */
+
+                    break;
+                //还书
+                case "return":
+                    templateId = "ibRn0TdibQpntp68rr-pqAGntvIY_Nmu9PRGO3CzoT8";
+                    /*{{first.DATA}}
+                        读者姓名：{{keyword1.DATA}}
+                        图书题名：{{keyword2.DATA}}
+                        图书条码：{{keyword3.DATA}}
+                        应还日期：{{keyword4.DATA}}
+                        实还日期：{{keyword5.DATA}}
+                        {{remark.DATA}}
+                     */
+                    break;
+                //留言
+                case "notice":
+                    templateId = "X7AKgVggnJgst45K9AddUthvpr4428ZaaXtk-cNaEOw";
+                    /*{{first.DATA}}
+                        学校：{{keyword1.DATA}}
+                        通知人：{{keyword2.DATA}}
+                        时间：{{keyword3.DATA}}
+                        通知内容：{{keyword4.DATA}}
+                        {{remark.DATA}}*/
+                    break;
+            }
+
             using (HttpClient sendClient = new HttpClient())
             {
                 var messageData = new

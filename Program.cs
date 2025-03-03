@@ -82,10 +82,11 @@ builder.Services.AddSingleton<ReaderService>();
 builder.Services.AddSingleton<LoanWorkService>();
 builder.Services.AddSingleton<ToolService>();
 
+
 // 添加内存缓存
 builder.Services.AddMemoryCache();
 // 注册微信 Token 服务（单例）
-builder.Services.AddSingleton<IWeChatTokenService, WeChatTokenService>();
+builder.Services.AddSingleton<IWeChatService, WeChatService>();
 
 // 全局共享 MongoDB 连接
 var client = new MongoClient(builder.Configuration.GetValue<string>("ConnectionStrings:BookDb"));

@@ -68,7 +68,9 @@ namespace SolidarityBookCatalog.Services
                 return new 
                 {
                     ReaderNo = reader.ReaderNo,
+                    Name=reader.Name,
                     Library = reader.Library,
+                    Phone=reader.Phone
                 };
             }
             return null;

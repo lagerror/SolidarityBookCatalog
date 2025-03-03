@@ -1,6 +1,8 @@
 ﻿using Elastic.Clients.Elasticsearch.MachineLearning;
 using Elastic.Clients.Elasticsearch.Nodes;
+using Elastic.Clients.Elasticsearch.Security;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.DependencyModel;
 using MongoDB.Bson;
 using MongoDB.Driver;
 using Nest;
@@ -9,9 +11,11 @@ using SolidarityBookCatalog.Models;
 using SolidarityBookCatalog.Services;
 using System;
 using System.Net;
+using System.Reflection.PortableExecutable;
 using System.Text.Json;
 using System.Threading.Tasks;
 using System.Web;
+using static Microsoft.Extensions.Logging.EventSource.LoggingEventSource;
 using static SolidarityBookCatalog.Services.PublicEnum;
 
 // For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
@@ -28,11 +32,12 @@ namespace SolidarityBookCatalog.Controllers
         IMongoCollection<LoanWork> _loanWork;
         IMongoCollection<Reader> _reader;
         LoanWorkService _loanWorkService;
+        IWeChatService _weChatService;
         private readonly ToolService _toolService;
         HttpClient _httpClient;
 
         private readonly string _baseUrl;
-        public LoanWorkController(IMongoClient client,LoanWorkService loanWorkService, HttpClient httpClient, IConfiguration configuration,ToolService toolService, ILogger<LoanWorkController> logger)
+        public LoanWorkController(IMongoClient client,LoanWorkService loanWorkService,IWeChatService weChatService, HttpClient httpClient, IConfiguration configuration,ToolService toolService, ILogger<LoanWorkController> logger)
         {
             _configuration = configuration;
             _toolService = toolService;
@@ -42,7 +47,7 @@ namespace SolidarityBookCatalog.Controllers
             _loanWork = database.GetCollection<LoanWork>("loanWork");
             _reader = database.GetCollection<Reader>("reader");
             _loanWorkService= loanWorkService;
-
+            _weChatService = weChatService;
             _logger = logger;
 
         }
@@ -298,9 +303,10 @@ namespace SolidarityBookCatalog.Controllers
                 //string v3 = WebUtility.UrlDecode(readerOpenId);
                 //string v1 = Tools.EncryptStringToBytes_Aes("oS4N5tzvoJn2uJ7b1PzMJj99JgTw", _cryptKey, _cryptIv);
                 //string v2 = Tools.DecryptStringFromBytes_Aes(v1, _cryptKey, _cryptIv);
+                //将传入的openid做编码后传给前端
+               string openId = HttpUtility.UrlEncode(readerOpenId);
                 //校验openId的解密
-               
-                var ret=_toolService.DeCryptOpenId(readerOpenId);
+                var ret =_toolService.DeCryptOpenId(readerOpenId);
                 if (!ret.Item1)
                 {
                     msg.Code = 3;
@@ -322,13 +328,24 @@ namespace SolidarityBookCatalog.Controllers
                 loanWork.Application.DestinationLocker = destinationLocker;
                 //目的快递柜详细信息
                 loanWork.Application.DestinationLockerDetail =await _loanWorkService.getDestinationLockerDetailAsync(destinationLocker);
-
-
-
+                //插入数据库
                 await _loanWork.InsertOneAsync(loanWork);
-
                 msg.Code = 0;
                 msg.Message = "申请成功";
+                //发送微信通知
+                if (loanWork.Application.ReaderDetail != null)
+                {
+                    var loan = new
+                    {
+                        keyword1 = new { value = $"{loanWork.Application.ReaderDetail.Library}:{loanWork.Application.ReaderDetail.ReaderNo}：{loanWork.Application.ReaderDetail.Phone}" },
+                        keyword2 = new { value = $"{loanWork.HoldingDetail.title}:{loanWork.HoldingDetail.isbn}:{loanWork.HoldingDetail.price}" },  //书名
+                        keyword3 = new { value = $"所在馆记录号：{loanWork.HoldingDetail.bookRecNo}" },   // ISBN
+                        keyword4 = new { value = $"{loanWork.Application.ApplicationTime.ToString("yyyy-MM-dd")}" },   //借的时间
+                        keyword5 = new { value = $"{loanWork.Application.ApplicationTime.AddDays(15).ToString("yyyy-MM-dd")}还回{loanWork.HoldingDetail.library}"   }   //还的时间地点
+                    };
+                    await _weChatService.SendTemplateMessageAsync("loan", readerOpenId, $"https://reader.yangtzeu.edu.cn/wechat/my?openId={openId}", loan);
+                }
+
             }
             catch (Exception ex)
             {
@@ -603,7 +620,7 @@ namespace SolidarityBookCatalog.Controllers
         {
             Msg msg = new Msg();
             //校验openId的解密
-
+            string sourceOpenId= openId;
             var ret = _toolService.DeCryptOpenId(openId);
             if (!ret.Item1)
             {
@@ -720,6 +737,27 @@ namespace SolidarityBookCatalog.Controllers
                     LockerNumber = destinationLockerInfo.LockerNumber,
                     CellNumber = destinationLockerInfo.CellNumber
                 };
+                /*
+                学校：{ { keyword1.DATA} }
+                通知人：{ { keyword2.DATA} }
+                时间：{ { keyword3.DATA} }
+                通知内容：{ { keyword4.DATA} }
+                */
+
+                //发送微信通知
+                if (destinationLockerInfo.CellNumber!= null)
+                {
+                    var notice = new
+                    {
+                        keyword1 = new { value = $"{destinationLockerInfo.LockerDetail.Owner}" },  //学校
+                        keyword2 = new { value = $"快递员联系方式：{destinationLockerInfo.CourierDetail.name}:{destinationLockerInfo.CourierDetail.phone}" },  //通知人，快递员电话
+                        keyword3 = new { value = $"{destinationLockerInfo.DepositTime?.ToString("yyyy-MM-dd")}" },   // 时间
+                        keyword4 = new { value = $"自助取书地点：{destinationLockerInfo.LockerDetail.Location}:{destinationLockerInfo.LockerDetail.Area}:{destinationLockerInfo.LockerNumber}: {destinationLockerInfo.CellNumber}" },   //取货的地点
+                       
+                    };
+                    await _weChatService.SendTemplateMessageAsync("notice", openId, $"https://reader.yangtzeu.edu.cn/wechat/my?openId={sourceOpenId}", notice);
+                }
+
             }
 
             return Ok(msg);
