@@ -749,10 +749,10 @@ namespace SolidarityBookCatalog.Controllers
                 {
                     var notice = new
                     {
-                        keyword1 = new { value = $"{destinationLockerInfo.LockerDetail.Owner}" },  //学校
+                        keyword1 = new { value = $"{destinationLockerInfo.LockerDetail.Owner}:{destinationLockerInfo.LockerDetail.Location}" },  //学校
                         keyword2 = new { value = $"快递员联系方式：{destinationLockerInfo.CourierDetail.name}:{destinationLockerInfo.CourierDetail.phone}" },  //通知人，快递员电话
                         keyword3 = new { value = $"{destinationLockerInfo.DepositTime?.ToString("yyyy-MM-dd")}" },   // 时间
-                        keyword4 = new { value = $"自助取书地点：{destinationLockerInfo.LockerDetail.Location}:{destinationLockerInfo.LockerDetail.Area}:{destinationLockerInfo.LockerNumber}: {destinationLockerInfo.CellNumber}" },   //取货的地点
+                        keyword4 = new { value = $"{destinationLockerInfo.LockerDetail.Area}: {destinationLockerInfo.CellNumber}" },   //取货的地点
                        
                     };
                     await _weChatService.SendTemplateMessageAsync("notice", openId, $"https://reader.yangtzeu.edu.cn/wechat/my?openId={sourceOpenId}", notice);
