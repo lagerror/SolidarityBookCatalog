@@ -1,4 +1,5 @@
-﻿using Elastic.Clients.Elasticsearch.Nodes;
+﻿using Elastic.Clients.Elasticsearch.MachineLearning;
+using Elastic.Clients.Elasticsearch.Nodes;
 using Microsoft.AspNetCore.Mvc;
 using MongoDB.Bson;
 using MongoDB.Driver;
@@ -61,6 +62,9 @@ namespace SolidarityBookCatalog.Controllers
                     break;
                 case "getReaderDetail":
                     msg.Data=await _loanWorkService.getReaderDetailAsync(pars);
+                    break;
+                case "getDestinationLockerDetailAsync":
+                    msg.Data=await _loanWorkService.getDestinationLockerDetailAsync(pars);
                     break;
             }
 
@@ -396,6 +400,8 @@ namespace SolidarityBookCatalog.Controllers
 
             //建立图书馆人员处理流程节点
             LibraryProcessingInfo libraryProcessingInfo = new LibraryProcessingInfo();
+
+
             //开柜自动分配格口
             string url = _baseUrl + $"/api/Locker/OpenEmptyCell?iccid={iccid}";
             HttpResponseMessage response = await _httpClient.GetAsync(url);
@@ -418,6 +424,8 @@ namespace SolidarityBookCatalog.Controllers
                     libraryProcessingInfo.LockerNumber =iccid;   //柜子
                     libraryProcessingInfo.CellNumber = msgTemp.Message.Split('|')[1];   //格口
                     apply.Status = PublicEnum.CirculationStatus.图书已找到;    //状态
+                    var temp=JsonSerializer.Deserialize<Locker>(msgTemp.Data.ToString(), options);
+                    libraryProcessingInfo.LockerDetail = temp;
                 }
                 else
                 {
@@ -534,7 +542,7 @@ namespace SolidarityBookCatalog.Controllers
                 {
                     PropertyNameCaseInsensitive = true
                 };
-                Msg msgTemp = System.Text.Json.JsonSerializer.Deserialize<Msg>(responseBody, options);
+                Msg msgTemp = JsonSerializer.Deserialize<Msg>(responseBody, options);
                 
                 if (msgTemp.Code == 0)
                 {
@@ -659,7 +667,7 @@ namespace SolidarityBookCatalog.Controllers
                 {
                     PropertyNameCaseInsensitive = true
                 };
-                Msg msgTemp = System.Text.Json.JsonSerializer.Deserialize<Msg>(responseBody, options);
+                Msg msgTemp = JsonSerializer.Deserialize<Msg>(responseBody, options);
 
                 if (msgTemp.Code == 0)
                 {
@@ -668,6 +676,9 @@ namespace SolidarityBookCatalog.Controllers
                     destinationLockerInfo.CourierOpenId = openId;
                     destinationLockerInfo.LockerNumber = iccid;
                     destinationLockerInfo.CellNumber = msgTemp.Message.Split('|')[1]; //格口
+                    //解析目的快递柜信息
+                    var temp = JsonSerializer.Deserialize<Locker>(msgTemp.Data.ToString(), options);
+                    destinationLockerInfo.LockerDetail = temp;
                     destinationLockerInfo.Remark = remark;
                 }
                 else

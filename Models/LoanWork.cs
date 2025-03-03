@@ -66,7 +66,7 @@ namespace SolidarityBookCatalog.Models
 
         //目的地快递柜信息
         [BsonElement("destinationLockerDetail")]
-        public dynamic? DestinationLockerDetail { get; set; }
+        public Locker? DestinationLockerDetail { get; set; }
     }
 
     // 图书馆处理信息嵌套类
@@ -79,16 +79,17 @@ namespace SolidarityBookCatalog.Models
         [BsonElement("librarianDetail")]
         public dynamic? LibrarianDetail { get; set; }
 
-
+        //传递柜ICCID
         [BsonElement("lockerNumber")]
-        public string LockerNumber { get; set; }
-
+        public string? LockerNumber { get; set; }
+        
+        //快递柜格口
         [BsonElement("cellNumber")]
-        public string CellNumber { get; set; }
+        public string? CellNumber { get; set; }
 
         ////找书人员放置快递柜的详细信息
         [BsonElement("lockerDetail")]
-        public dynamic? LockerDetail { get; set; }
+        public Locker? LockerDetail { get; set; }
 
         [BsonElement("depositTime")]
         public DateTime? DepositTime { get; set; }= DateTime.UtcNow;
@@ -130,7 +131,7 @@ namespace SolidarityBookCatalog.Models
         
         //放置快递柜详细信息
         [BsonElement("lockerDetail")]
-        public dynamic? LockerDetail { get; set; }
+        public Locker? LockerDetail { get; set; }
 
         [BsonElement("depositTime")]
         public DateTime? DepositTime { get; set; } = DateTime.UtcNow;
