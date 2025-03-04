@@ -17,7 +17,7 @@ namespace SolidarityBookCatalog.Models
 
         // 所借图书详细信息
         [BsonElement("holdingDetail")]
-        public dynamic? HoldingDetail { get; set; }
+        public HoldingDetail? HoldingDetail { get; set; }
 
         // 申请阶段信息
         [BsonElement("application")]

@@ -118,7 +118,21 @@ namespace SolidarityBookCatalog.Controllers
             {
                 msg.Code = 0;
                 msg.Message = "更新成功";
-                return Ok(msg);
+
+                //发送微信通知
+                //发送微信通知
+                if (apply.Application.ReaderDetail!= null)
+                {
+                    var notice = new
+                    {
+                        keyword1 = new { value = $"{apply.HoldingDetail?.Library}" },  //学校
+                        keyword2 = new { value = $"{apply.Application.ReaderDetail.Name}借阅图书{apply.HoldingDetail?.Title}:状态更改" },  //通知人，快递员电话
+                        keyword3 = new { value = $"{apply.Application?.ApplicationTime.ToString("yyyy-MM-dd")}" },   // 时间
+                        keyword4 = new { value = $"该申请因为 {remark} 而取消" },   //取货的地点
+
+                    };
+                    await _weChatService.SendTemplateMessageAsync("notice", apply.Application.ReaderOpenId, $"https://reader.yangtzeu.edu.cn/wechat/my?openId={HttpUtility.UrlEncode(_toolService.EnCryptOPenId(apply.Application.ReaderOpenId).Item2)}", notice);
+                }
             }
 
             return Ok(msg);
@@ -393,10 +407,10 @@ namespace SolidarityBookCatalog.Controllers
                     var loan = new
                     {
                         keyword1 = new { value = $"{loanWork.Application.ReaderDetail.Library}:{loanWork.Application.ReaderDetail.ReaderNo}：{loanWork.Application.ReaderDetail.Phone}" },
-                        keyword2 = new { value = $"{loanWork.HoldingDetail.title}:{loanWork.HoldingDetail.isbn}:{loanWork.HoldingDetail.price}" },  //书名
-                        keyword3 = new { value = $"所在馆记录号：{loanWork.HoldingDetail.bookRecNo}" },   // ISBN
+                        keyword2 = new { value = $"{loanWork.HoldingDetail.Title}:{loanWork.HoldingDetail.isbn}:{loanWork.HoldingDetail.Price.ToString()}" },  //书名
+                        keyword3 = new { value = $"所在馆记录号：{loanWork.HoldingDetail.BookRecNo}" },   // ISBN
                         keyword4 = new { value = $"{loanWork.Application.ApplicationTime.ToString("yyyy-MM-dd")}" },   //借的时间
-                        keyword5 = new { value = $"{loanWork.Application.ApplicationTime.AddDays(15).ToString("yyyy-MM-dd")}还回{loanWork.HoldingDetail.library}"   }   //还的时间地点
+                        keyword5 = new { value = $"{loanWork.Application.ApplicationTime.AddDays(15).ToString("yyyy-MM-dd")}还回{loanWork.HoldingDetail.Library}"   }   //还的时间地点
                     };
                     await _weChatService.SendTemplateMessageAsync("loan", readerOpenId, $"https://reader.yangtzeu.edu.cn/wechat/my?openId={openId}", loan);
                 }

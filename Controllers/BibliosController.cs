@@ -86,7 +86,7 @@ namespace SolidarityBookCatalog.Controllers
         /// <returns>基本书目信息</returns>
         [HttpGet]
         [Route("identifier")]
-        public async Task<Msg> GetAsync(string identifier)
+        public async Task<IActionResult> GetAsync(string identifier)
         {
             Msg msg=new Msg();
             
@@ -102,7 +102,7 @@ namespace SolidarityBookCatalog.Controllers
                         msg.Code = 0;
                         msg.Message = "查到书目";
                         msg.Data = book;
-                        return msg;
+                        return Ok(msg);
                     }
                     else
                     {
@@ -122,7 +122,7 @@ namespace SolidarityBookCatalog.Controllers
                 msg.Message = ex.Message;
             }
 
-            return msg;
+            return Ok(msg);
         }
 
         [HttpPost]

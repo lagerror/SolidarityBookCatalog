@@ -83,7 +83,7 @@ namespace SolidarityBookCatalog.Controllers
             try
             {
                 //校验openId的解密
-                openId = HttpUtility.UrlDecode(openId);
+               
                 var ret = _toolService.DeCryptOpenId(openId);
                 if (!ret.Item1)
                 {
@@ -132,7 +132,7 @@ namespace SolidarityBookCatalog.Controllers
         {
             Msg msg = new Msg();
             Console.WriteLine(dto.OpenId);
-            dto.OpenId = HttpUtility.UrlDecode(dto.OpenId);
+           
             //校验openId的解密
             var ret = _toolService.DeCryptOpenId(dto.OpenId);
             if (!ret.Item1)

@@ -87,18 +87,17 @@ namespace SolidarityBookCatalog.Services
                     var user=await _users.Find(x => x.AppId == holding.UserName).FirstOrDefaultAsync();
                     if (user != null)
                     {
-                        return new
-                        {
-                            title = biblios.Title,
-                            creator = biblios.Creator,
-                            publisher = biblios.Publisher,
-                            price = biblios.Price,
-                            isbn = biblios.Identifier,
-                            year = biblios.Date,
-                            barcode = holding.Barcode,
-                            bookRecNo = holding.BookRecNo,
-                            library = user.Province + user.City + user.Name + user.MobilePhone
-                        };
+                        HoldingDetail holdingDetail = new HoldingDetail();
+                        holdingDetail.Title = biblios.Title;
+                        holdingDetail.Creator = biblios.Creator;
+                        holdingDetail.Publisher = biblios.Publisher;
+                        holdingDetail.Price = biblios.Price.ToString();
+                        holdingDetail.isbn = biblios.Identifier;
+                        holdingDetail.Year = biblios.Date;
+                        holdingDetail.Barcode = holding.Barcode;
+                        holdingDetail.BookRecNo = holding.BookRecNo;
+                        holdingDetail.Library = user.Province + user.City + user.Name + user.MobilePhone;
+                        return holdingDetail;
                     }
                 }
             }
@@ -147,5 +146,20 @@ namespace SolidarityBookCatalog.Services
     { 
         public int total { set; get; }
         public List<Locker>? rows { set; get; }
+    }
+
+    public class HoldingDetail
+    {
+         public string?   Title { set; get; }
+         public string? Creator { set; get; }
+          public string? Publisher { set; get; }
+          public string? Price { set; get; }
+          public string? isbn { set; get; }
+          public string? Year { set; get; }
+          public List<string>? Barcode { set; get; }
+          public string? BookRecNo { set; get; }
+          public string? Library { set; get; }
+
+
     }
 }
