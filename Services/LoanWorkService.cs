@@ -60,18 +60,17 @@ namespace SolidarityBookCatalog.Services
 
 
         //返回读者学号和所在图书馆
-        public async Task<dynamic> getReaderDetailAsync(string openId = "oS4N5tzvoJn2uJ7b1PzMJj99JgTw")
+        public async Task<ReaderDetail> getReaderDetailAsync(string openId = "oS4N5tzvoJn2uJ7b1PzMJj99JgTw")
         {
             var reader = await _readers.Find(x => x.OpenId == openId).FirstOrDefaultAsync();
             if (reader != null)
             {
-                return new 
-                {
-                    ReaderNo = reader.ReaderNo,
-                    Name=reader.Name,
-                    Library = reader.Library,
-                    Phone=reader.Phone
-                };
+                ReaderDetail readerDetail = new ReaderDetail();
+                readerDetail.ReaderNo = reader.ReaderNo;
+                readerDetail.Phone=reader.Phone;
+                readerDetail.Library = reader.Library;
+                readerDetail.Name = reader.Name;
+                return readerDetail;
             }
             return null;
         }

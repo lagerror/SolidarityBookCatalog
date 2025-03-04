@@ -74,25 +74,26 @@ namespace SolidarityBookCatalog.Controllers
         // GET api/<ReaderController>/5
         [HttpGet]
         [Route("getByOpenId")]
-        public async Task<IActionResult> Get(string openid)
+        public async Task<IActionResult> Get(string openId)
         {
-            //openId=rfWTm26wJZnpQ+S0Jgywkd1CwWuzRhO7mTGiI0/QZlY=
-            //rfWTm26wJZnpQ%2bS0Jgywkd1CwWuzRhO7mTGiI0%2fQZlY%3d  
+            //rfWTm26wJZnpQ+S0JgywkZPQUU59YMTdoGVAEzPnfC2epRw1ZuI8EqIjbGPV8by9
+            //rfWTm26wJZnpQ%2BS0JgywkZPQUU59YMTdoGVAEzPnfC2epRw1ZuI8EqIjbGPV8by9
             //必须解码
             Msg msg = new Msg();
             try
             {
                 //校验openId的解密
-                var ret = _toolService.DeCryptOpenId(openid);
+                openId = HttpUtility.UrlDecode(openId);
+                var ret = _toolService.DeCryptOpenId(openId);
                 if (!ret.Item1)
                 {
                     msg.Code = 3;
                     msg.Message = $"OpenId解密失败";
                     return Ok(msg);
                 }
-                openid = ret.Item2;
+                openId = ret.Item2;
 
-                var reader = await _readers.Find(r => r.OpenId == openid).FirstOrDefaultAsync();
+                var reader = await _readers.Find(r => r.OpenId == openId).FirstOrDefaultAsync();
                 if (reader == null)
                 {
                     msg.Code = 1;

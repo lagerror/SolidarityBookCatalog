@@ -1,6 +1,7 @@
 ﻿using Elastic.Clients.Elasticsearch.MachineLearning;
 using Elastic.Clients.Elasticsearch.Nodes;
 using Elastic.Clients.Elasticsearch.Security;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyModel;
 using MongoDB.Bson;
@@ -75,10 +76,57 @@ namespace SolidarityBookCatalog.Controllers
 
                 return Ok(msg);
         }
+        //管理人员修改申请的状态，并给出原因，后台发送微信通知
+        [HttpPost]
+        [Route("status")]
+        [Authorize(Policy="AdminOrManager")]
+        public async Task<IActionResult> status(string applyId,string remark,string status="申请终止")
+        { 
+            Msg msg= new Msg();
+            //找到事务
+            var apply = _loanWork.FindAsync(x => x.Id == applyId).Result.FirstOrDefault();
+            if (apply == null)
+            {
+                msg.Code = 1;
+                msg.Message = "没找到对应申请事务号";
+                return Ok(msg);
+            }
+
+            apply.Remark = remark;
+
+            try
+            {
+                Enum.TryParse<CirculationStatus>(status, out var statusOut);
+                apply.Status = statusOut;
+            }
+            catch {
+                msg.Code = 2;
+                msg.Message = "状态值无效";
+                return Ok(msg);
+            }
+           
+            // 创建更新定义
+            var updateDefinition = Builders<LoanWork>.Update
+                .Set(x => x.Remark, apply.Remark)
+                .Set(x => x.Status, apply.Status);
+
+            // 更新数据库中的文档
+            var updateResult = _loanWork.UpdateOne(x => x.Id == apply.Id, updateDefinition);
+
+            // 检查更新结果
+            if (updateResult.ModifiedCount == 1)
+            {
+                msg.Code = 0;
+                msg.Message = "更新成功";
+                return Ok(msg);
+            }
+
+            return Ok(msg);
+        }
 
         [HttpPost]
         [Route("search")]
-        public async Task<IActionResult> search(string openId, SearchQueryList list,int rows=10,int page=1)
+        public async Task<IActionResult> search(SearchQueryList list, string openId = "rfWTm26wJZnpQ+S0JgywkZPQUU59YMTdoGVAEzPnfC2epRw1ZuI8EqIjbGPV8by9",int rows=10,int page=1)
         {
             Msg msg = new Msg();
             //校验openId的解密，为查询者的openId
@@ -131,7 +179,8 @@ namespace SolidarityBookCatalog.Controllers
                     break;
                 case PublicEnum.Type.馆际互借人员:
                     break;
-                default:
+                default:   //其它都只能自己查自己的 查询条件会限定openid
+
                     msg.Code = 3;
                     msg.Message = "查询者没有权限";
                     return Ok(msg);
@@ -160,6 +209,12 @@ namespace SolidarityBookCatalog.Controllers
                         case "readerOpenId":
                             filters.Add(builder.Eq(x => x.Application.ReaderOpenId, item.Keyword));
                         break;
+                        case "id":
+                            filters.Add(builder.Eq(x => x.Id, item.Keyword));
+                            break;
+                        case "phone":
+                            filters.Add(builder.Eq(x=>x.Application.ReaderDetail.Phone, item.Keyword));
+                            break;
                     }
                    
                 }

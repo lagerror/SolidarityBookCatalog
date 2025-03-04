@@ -39,13 +39,16 @@ namespace SolidarityBookCatalog.Models
         [BsonElement("pickup")]
         public PickupInfo? Pickup { get; set; }
 
-
-
-
         // 流程状态
         [BsonElement("status")]
         [BsonRepresentation(BsonType.String)]
         public PublicEnum.CirculationStatus Status { get; set; }
+        
+        // 消息提示
+        [BsonElement("remark")]
+        [BsonRepresentation(BsonType.String)]
+        public string? Remark { get; set; }
+
     }
 
     // 申请信息嵌套类
@@ -56,7 +59,7 @@ namespace SolidarityBookCatalog.Models
 
         // 申请者详细信息
         [BsonElement("readerDetail")]
-        public dynamic? ReaderDetail { get; set; }
+        public ReaderDetail? ReaderDetail { get; set; }
 
         [BsonElement("applicationTime")]
         public DateTime ApplicationTime { get; set; } = DateTime.UtcNow;
@@ -165,5 +168,14 @@ namespace SolidarityBookCatalog.Models
         public string Remark { get; set; }
     }
 
-  
+    //以下为二层嵌入类
+    //返回给前端的读者信息
+    public class ReaderDetail 
+    { 
+        public string?  Name { get; set; }
+        public string? Library {  get; set; }
+        public string? Phone { set; get; }
+        public string? ReaderNo { get; set; }
+    }
+
 }
