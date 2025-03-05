@@ -337,7 +337,16 @@ namespace SolidarityBookCatalog.Controllers
                 readerOpenId = ret.Item2;
 
                 LoanWork loanWork = new LoanWork();
+
                 loanWork.HoldingDetail=await _loanWorkService.getHoldingDetailAsync(holdingId);
+                //如果没有找到对应的馆藏，直接返回
+                if (loanWork.HoldingDetail == null)
+                {
+                    msg.Code = 4;
+                    msg.Message = "没有找到对应的馆藏";
+                    return Ok(msg);
+                }
+
                 ApplicationInfo applicationInfo = new ApplicationInfo();
                 loanWork.Application = applicationInfo;
 
@@ -346,9 +355,23 @@ namespace SolidarityBookCatalog.Controllers
                 loanWork.Application.ReaderOpenId = readerOpenId;
                 //申请者详细信息
                 loanWork.Application.ReaderDetail = await _loanWorkService.getReaderDetailAsync(readerOpenId);
+                //没有找到对应的读者信息，直接退出
+                if (loanWork.Application.ReaderDetail == null)
+                {
+                    msg.Code = 5;
+                    msg.Message = "没有找到对应的读者信息";
+                    return Ok(msg);
+                }
+
                 loanWork.Application.DestinationLocker = destinationLocker;
                 //目的快递柜详细信息
                 loanWork.Application.DestinationLockerDetail =await _loanWorkService.getDestinationLockerDetailAsync(destinationLocker);
+                if (loanWork.Application.DestinationLockerDetail == null)
+                {
+                    msg.Code = 7;
+                    msg.Message = "没有找到目的地快递柜";
+                    return Ok(msg);
+                }
                 //插入数据库
                 await _loanWork.InsertOneAsync(loanWork);
                 msg.Code = 0;
@@ -484,7 +507,14 @@ namespace SolidarityBookCatalog.Controllers
             }
             //将图书馆取书信息加入到流程节点
             libraryProcessingInfo.LibrarianDetail = await _loanWorkService.getLibrarianDetailAsync(openId);
+            //没有找到馆员信息，直接退出
+            if (libraryProcessingInfo.LibrarianDetail == null) 
+            {
+                msg.Code = 8;
+                msg.Message = "没有找到对应的人员信息";
             
+            }
+
             apply.LibraryProcessing = libraryProcessingInfo;
             //更新事务
            var result=  await _loanWork.ReplaceOneAsync(x => x.Id == applyId, apply);
@@ -605,14 +635,20 @@ namespace SolidarityBookCatalog.Controllers
                 return Ok(msg);
             }
 
-            //将图书馆取书信息加入到流程节点
+            //将图书馆快递人员加入到流程节点
             transportInfo.CourierDetail=await _loanWorkService.getCourierDetailAsync(openId);
+            if (transportInfo.CourierDetail==null)
+            {
+                msg.Code = 8;
+                msg.Message = "没有找到快递员信息";
+                return Ok(msg);
+            }
             apply.Transport = transportInfo;
             //更新事务
             var result = await _loanWork.ReplaceOneAsync(x => x.Id == applyId, apply);
             if (result.ModifiedCount != 1)
             {
-                msg.Code = 8;
+                msg.Code = 9;
                 msg.Message = "更新数据不成功";
             }
             else
@@ -737,15 +773,20 @@ namespace SolidarityBookCatalog.Controllers
                 return Ok(msg);
             }
 
-            //将图书馆取书信息加入到流程节点
+            //将快递人员加入到流程节点
             destinationLockerInfo.CourierDetail = await _loanWorkService.getCourierDetailAsync(openId);
-
+            if (destinationLockerInfo.CourierDetail==null)
+            {
+                msg.Code = 8;
+                msg.Message = "没有找到快递人员信息";
+                return Ok(msg);
+            }
             apply.DestinationLocker = destinationLockerInfo;
             //更新事务
             var result = await _loanWork.ReplaceOneAsync(x => x.Id == applyId, apply);
             if (result.ModifiedCount != 1)
             {
-                msg.Code = 8;
+                msg.Code = 9;
                 msg.Message = "更新数据不成功";
             }
             else
