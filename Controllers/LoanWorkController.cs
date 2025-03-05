@@ -306,103 +306,7 @@ namespace SolidarityBookCatalog.Controllers
             }
             return msg;
         }
-
-        //快递人员查询函数，只能查状态为图书已经找到和运输中的
-        private async Task<Msg> searchCourier(SearchQueryList list, int rows = 10, int page = 1)
-        {
-            Msg msg = new Msg();
-            try
-            {
-                var builder = Builders<LoanWork>.Filter;
-                var filters = new List<FilterDefinition<LoanWork>>();
-                foreach (var item in list.List)
-                {
-                    switch (item.Field)
-                    {
-                        case "status":
-                            //Enum.TryParse<CirculationStatus>(item.Keyword, out var status);
-                            filters.Add(builder.Eq(x => x.Status, PublicEnum.CirculationStatus.图书已找到));
-                            filters.Add(builder.Eq(x => x.Status, PublicEnum.CirculationStatus.运输中));
-                            break;
-                    }
-                }
-                var finalFilter = filters.Count > 0
-               ? builder.Or(filters)
-               : FilterDefinition<LoanWork>.Empty;
-                // 执行查询
-                var total = await _loanWork.CountDocumentsAsync(finalFilter);
-                var results = await _loanWork.Find(finalFilter)
-                    .Skip((page - 1) * rows)
-                    .Limit(rows)
-                    .ToListAsync();
-                msg.Code = 0;
-                msg.Message = "查询成功";
-                msg.Data = new
-                {
-                    total = total,
-                    rows = results
-                };
-            }
-            catch (Exception ex)
-            {
-                msg.Code = 100;
-                msg.Message = ex.Message;
-            }
-            return msg;
-        }
-
-        //馆际互借人员查询函数，只能查状态为已申请和已到达目的地的
-        private async Task<Msg> searchInterLibraryLoan(SearchQueryList list, int rows = 10, int page = 1)
-        {
-            Msg msg = new Msg();
-            try
-            {
-                var builder = Builders<LoanWork>.Filter;
-                var filters = new List<FilterDefinition<LoanWork>>();
-                foreach (var item in list.List)
-                {
-                    switch (item.Field)
-                    {
-                        case "status":
-                            //Enum.TryParse<CirculationStatus>(item.Keyword, out var status);
-                            filters.Add(builder.Eq(x => x.Status, PublicEnum.CirculationStatus.已申请));
-                            filters.Add(builder.Eq(x => x.Status, PublicEnum.CirculationStatus.已到达目的地));
-                            break;
-                    }
-                }
-                var finalFilter = filters.Count > 0
-               ? builder.And(filters)
-               : FilterDefinition<LoanWork>.Empty;
-                //限定状态为已申请和已到达目的地 
-                var statusOrFilter = builder.Or(
-                    builder.Eq(x => x.Status, PublicEnum.CirculationStatus.已申请),
-                    builder.Eq(x => x.Status, PublicEnum.CirculationStatus.已到达目的地)
-                );
-
-                filters.Add(statusOrFilter);
-                finalFilter = builder.And(filters);
-                // 执行查询
-                var total = await _loanWork.CountDocumentsAsync(finalFilter);
-                var results = await _loanWork.Find(finalFilter)
-                    .Skip((page - 1) * rows)
-                    .Limit(rows)
-                    .ToListAsync();
-                msg.Code = 0;
-                msg.Message = "查询成功";
-                msg.Data = new
-                {
-                    total = total,
-                    rows = results
-                };
-            }
-            catch (Exception ex)
-            {
-                msg.Code = 100;
-                msg.Message = ex.Message;
-            }
-            return msg;
-        }
-
+    
         /// <summary>
         /// 哪个人，申请哪本书，从哪个柜子到哪个柜子
         /// </summary>
@@ -468,6 +372,8 @@ namespace SolidarityBookCatalog.Controllers
             {
                 msg.Code = 100;
                 msg.Message = ex.Message;
+                msg.Data = ex.StackTrace;
+
             }   
             return Ok(msg);
         }

@@ -72,7 +72,7 @@ namespace SolidarityBookCatalog.Services
             return null;
         }
         //返回图书详细信息
-        public async Task<dynamic> getHoldingDetailAsync(string id)
+        public async Task<HoldingDetail> getHoldingDetailAsync(string id)
         {
             var holding = await _holdings.Find(x => x.Id == id).FirstOrDefaultAsync();
             if (holding != null) 
@@ -147,7 +147,7 @@ namespace SolidarityBookCatalog.Services
 
     public class HoldingDetail
     {
-         public string?   Title { set; get; }
+         public string?  Title { set; get; }
          public string? Creator { set; get; }
           public string? Publisher { set; get; }
           public string? Price { set; get; }
