@@ -1,10 +1,7 @@
-﻿using MongoDB.Bson.IO;
-using MongoDB.Driver;
+﻿using MongoDB.Driver;
 using SolidarityBookCatalog.Models;
 using System.Text;
 using System.Text.Json;
-using System.Text.Unicode;
-using System.Threading.Tasks;
 
 namespace SolidarityBookCatalog.Services
 {

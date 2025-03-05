@@ -186,18 +186,40 @@ namespace SolidarityBookCatalog.Controllers
             {
                 case PublicEnum.Type.管理员:
                     msg = await searchAdmin(list, rows, page);
-                    return Ok(msg);
+
                     break;
                 case PublicEnum.Type.快递人员:
+                    //如果是快递人员，加上status=已完成取书 或者 运输中 
+                    SearchQuery searchQuery2 = new SearchQuery();
+                    searchQuery2.Field = "status";
+                    searchQuery2.Keyword = "图书已找到";
+                    list.List.Add(searchQuery2);
 
+                    SearchQuery searchQuery3 = new SearchQuery();
+                    searchQuery3.Field = "status";
+                    searchQuery3.Keyword = "运输中";
+                    list.List.Add(searchQuery3);
+
+
+                    msg = await searchAdmin(list, rows, page);
                     break;
                 case PublicEnum.Type.馆际互借人员:
+                    //只能看到已经申请状态的
+                    SearchQuery searchQuery1 = new SearchQuery();
+                    searchQuery1.Field = "status";
+                    searchQuery1.Keyword = "已申请";
+                    list.List.Add(searchQuery1);
+
+                    msg = await searchAdmin(list, rows, page);
                     break;
                 default:   //其它都只能自己查自己的 查询条件会限定openid
+                    SearchQuery searchQueryMyself = new SearchQuery();
+                    searchQueryMyself.Field = "readerOpenId";
+                    searchQueryMyself.Keyword = openId;
+                    list.List.Add(searchQueryMyself);
 
-                    msg.Code = 3;
-                    msg.Message = "查询者没有权限";
-                    return Ok(msg);
+                    msg = await searchAdmin(list, rows, page);
+                    break;
             }
            
 
@@ -211,30 +233,56 @@ namespace SolidarityBookCatalog.Controllers
             {
                 var builder = Builders<LoanWork>.Filter;
                 var filters = new List<FilterDefinition<LoanWork>>();
-         
-                foreach (var item in list.List)
+
+                // 按字段分组处理条件
+                var groupedConditions = list.List.GroupBy(item => item.Field);
+                foreach (var group in groupedConditions)
                 {
-                    switch (item.Field)
+                    var field = group.Key;
+                    var conditions = group.ToList();
+                    var orFilters = new List<FilterDefinition<LoanWork>>();
+
+                    foreach (var item in conditions)
                     {
-                        case "status":
-                            Enum.TryParse<CirculationStatus>(item.Keyword, out var status);
-                            filters.Add(builder.Eq(x => x.Status, status));
-                        break;
-                        case "readerOpenId":
-                            filters.Add(builder.Eq(x => x.Application.ReaderOpenId, item.Keyword));
-                        break;
-                        case "id":
-                            filters.Add(builder.Eq(x => x.Id, item.Keyword));
-                            break;
-                        case "phone":
-                            filters.Add(builder.Eq(x=>x.Application.ReaderDetail.Phone, item.Keyword));
-                            break;
+                        // 根据字段类型生成对应的过滤器
+                        switch (item.Field)
+                        {
+                            case "status":
+                                if (Enum.TryParse<CirculationStatus>(item.Keyword, out var status))
+                                {
+                                    orFilters.Add(builder.Eq(x => x.Status, status));
+                                }
+                                break;
+                            case "readerOpenId":
+                                orFilters.Add(builder.Eq(x => x.Application.ReaderOpenId, item.Keyword));
+                                break;
+                            case "id":
+                                orFilters.Add(builder.Eq(x => x.Id, item.Keyword));
+                                break;
+                            case "phone":
+                                orFilters.Add(builder.Eq(x => x.Application.ReaderDetail.Phone, item.Keyword));
+                                break;
+                        }
                     }
-                   
+
+                    if (orFilters.Count == 0)
+                    {
+                        continue; // 忽略无效条件
+                    }
+                    else if (orFilters.Count == 1)
+                    {
+                        filters.Add(orFilters[0]); // 单个条件直接添加
+                    }
+                    else
+                    {
+                        filters.Add(builder.Or(orFilters)); // 多个条件用OR组合
+                    }
                 }
+                // 组合所有分组过滤器为AND条件
                 var finalFilter = filters.Count > 0
-               ? builder.And(filters)
-               : FilterDefinition<LoanWork>.Empty;
+                    ? builder.And(filters)
+                    : FilterDefinition<LoanWork>.Empty;
+
                 // 执行查询
                 var total = await _loanWork.CountDocumentsAsync(finalFilter);
                 var results = await _loanWork.Find(finalFilter)
