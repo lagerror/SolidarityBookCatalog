@@ -65,16 +65,6 @@ namespace SolidarityBookCatalog.Services
                 //借书
                 case "loan":
                     templateId = "jlokyJVUwOsXzio09VPt4TSdGELfgBxfOOF9SYIpFY0";
-                    
-                    /*{ { first.DATA} }
-                    读者姓名：{ { keyword1.DATA} }
-                    图书题名：{ { keyword2.DATA} }
-                    图书条码：{ { keyword3.DATA} }
-                    借书日期：{ { keyword4.DATA} }
-                    应还日期：{ { keyword5.DATA} }
-                    { { remark.DATA} }
-                    */
-
                     break;
                 //还书
                 case "return":
