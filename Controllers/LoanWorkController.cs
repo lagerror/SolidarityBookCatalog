@@ -262,6 +262,9 @@ namespace SolidarityBookCatalog.Controllers
                             case "phone":
                                 orFilters.Add(builder.Eq(x => x.Application.ReaderDetail.Phone, item.Keyword));
                                 break;
+                            case "appId":
+                                orFilters.Add(builder.Eq(x => x.HoldingDetail.AppId, item.Keyword));
+                                break;
                         }
                     }
 

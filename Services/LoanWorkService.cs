@@ -93,6 +93,7 @@ namespace SolidarityBookCatalog.Services
                         holdingDetail.Year = biblios.Date;
                         holdingDetail.Barcode = holding.Barcode;
                         holdingDetail.BookRecNo = holding.BookRecNo;
+                        holdingDetail.AppId=user.AppId;
                         holdingDetail.Library = user.Province + user.City + user.Name + user.MobilePhone;
                         return holdingDetail;
                     }
@@ -155,6 +156,7 @@ namespace SolidarityBookCatalog.Services
           public string? Year { set; get; }
           public List<string>? Barcode { set; get; }
           public string? BookRecNo { set; get; }
+         public string? AppId { set; get; }
           public string? Library { set; get; }
 
 
