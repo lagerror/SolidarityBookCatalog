@@ -1,8 +1,4 @@
 ﻿using QRCoder;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.Formats.Png;
-using SixLabors.ImageSharp.Processing;
-using static QRCoder.PayloadGenerator;
 
 namespace SolidarityBookCatalog.Services
 {

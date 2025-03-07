@@ -1,17 +1,7 @@
 ﻿using Elastic.Clients.Elasticsearch;
-using Elastic.Clients.Elasticsearch.Core.Bulk;
-using Elastic.Clients.Elasticsearch.IndexManagement;
-using Elastic.Clients.Elasticsearch.Nodes;
-using Elastic.Clients.Elasticsearch.QueryDsl;
-using Elastic.Transport;
 using MongoDB.Driver;
 using SolidarityBookCatalog.Models;
-using System;
 using System.Collections;
-using System.Diagnostics;
-using System.Drawing;
-using System.Threading;
-using static System.Net.Mime.MediaTypeNames;
 namespace SolidarityBookCatalog.Services
 {
     public class ElasticService

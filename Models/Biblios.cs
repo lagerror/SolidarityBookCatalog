@@ -1,8 +1,7 @@
-﻿using MongoDB.Bson.Serialization.Attributes;
-using MongoDB.Bson;
+﻿using MongoDB.Bson;
+using MongoDB.Bson.Serialization.Attributes;
 using System.ComponentModel.DataAnnotations;
 using System.Text.RegularExpressions;
-using Microsoft.Extensions.FileSystemGlobbing.Internal;
 
 namespace SolidarityBookCatalog.Models
 {

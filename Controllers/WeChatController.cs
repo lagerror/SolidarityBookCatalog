@@ -1,10 +1,8 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using MongoDB.Driver;
-using SharpCompress.Readers;
 using SolidarityBookCatalog.Models;
 using SolidarityBookCatalog.Services;
 using System.Web;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 // For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
 //https://open.weixin.qq.com/connect/oauth2/authorize?appid=wx86605acd8f3d0820&redirect_uri=https%3A%2F%2Freader.yangtzeu.edu.cn%2Fsolidarity%2Fapi%2Fwechat%2Foauth&response_type=code&scope=snsapi_userinfo&state=STATE&connect_redirect=1#wechat_redirect

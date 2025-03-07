@@ -1,10 +1,8 @@
 ﻿using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using MongoDB.Driver;
 using SolidarityBookCatalog.Models;
 using SolidarityBookCatalog.Services;
-using System.Text.RegularExpressions;
 
 namespace SolidarityBookCatalog.Controllers
 {

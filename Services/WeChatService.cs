@@ -1,15 +1,9 @@
 ﻿using Microsoft.Extensions.Caching.Memory;
-using System.Text.Json.Serialization;
-using System.Text.Json;
-using System.Text.Json.Nodes;
-using System.Text;
-using System.Security.Cryptography;
-using System.Web;
-using MongoDB.Bson.IO;
 using SolidarityBookCatalog.Models;
-using static System.Runtime.InteropServices.JavaScript.JSType;
-using static Microsoft.Extensions.Logging.EventSource.LoggingEventSource;
-using System.Collections.Generic;
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace SolidarityBookCatalog.Services
 {

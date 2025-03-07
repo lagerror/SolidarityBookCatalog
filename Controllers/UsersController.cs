@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
+using MongoDB.Bson;
 using MongoDB.Driver;
 using SolidarityBookCatalog.Models;
 using SolidarityBookCatalog.Services;
@@ -8,7 +9,6 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
-using MongoDB.Bson;
 using User = SolidarityBookCatalog.Models.User;
 
 

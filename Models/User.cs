@@ -1,5 +1,4 @@
-﻿using Elastic.Clients.Elasticsearch;
-using MongoDB.Bson;
+﻿using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 
 namespace SolidarityBookCatalog.Models

@@ -1,23 +1,10 @@
-﻿using Elastic.Clients.Elasticsearch.MachineLearning;
-using Elastic.Clients.Elasticsearch.Nodes;
-using Elastic.Clients.Elasticsearch.Security;
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.DependencyModel;
-using MongoDB.Bson;
 using MongoDB.Driver;
-using Nest;
-using SharpCompress.Readers;
 using SolidarityBookCatalog.Models;
 using SolidarityBookCatalog.Services;
-using System;
-using System.Net;
-using System.Reflection.PortableExecutable;
 using System.Text.Json;
-using System.Text.Json.Serialization;
-using System.Threading.Tasks;
 using System.Web;
-using static Microsoft.Extensions.Logging.EventSource.LoggingEventSource;
 using static SolidarityBookCatalog.Services.PublicEnum;
 
 // For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860

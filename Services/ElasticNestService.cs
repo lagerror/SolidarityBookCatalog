@@ -1,11 +1,6 @@
-﻿using Elastic.Clients.Elasticsearch;
-using Elastic.Clients.Elasticsearch.Fluent;
-using Elastic.Clients.Elasticsearch.QueryDsl;
-using Elasticsearch.Net;
-using Nest;
+﻿using Nest;
 using SolidarityBookCatalog.Models;
 using System.Collections;
-using static Microsoft.Extensions.Logging.EventSource.LoggingEventSource;
 using SortOrder = Nest.SortOrder;
 namespace SolidarityBookCatalog.Services
 {

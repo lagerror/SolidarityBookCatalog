@@ -1,9 +1,7 @@
 ﻿using MongoDB.Bson;
 using MongoDB.Driver;
 using SolidarityBookCatalog.Models;
-using System.Collections;
 using System.Security.Cryptography;
-using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
