@@ -58,6 +58,15 @@ namespace SolidarityBookCatalog.Controllers
 
             return new string[] { "value1", "value2" };
         }
+        //生成借阅二维码
+        [HttpGet]
+        [Route("qr")]
+        public  IActionResult qr(string url)
+        {
+            return File(ToolService.GenerateQRCodeWithLogo(url, 4), "image/jpeg");
+        }
+
+
         /// <summary>
         /// 通过ISBN查询馆藏
         /// </summary>

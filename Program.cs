@@ -87,6 +87,8 @@ builder.Services.AddSingleton<ToolService>();
 builder.Services.AddMemoryCache();
 // 注册微信 Token 服务（单例）
 builder.Services.AddSingleton<IWeChatService, WeChatService>();
+//注册百度IOT服务
+builder.Services.AddSingleton<IBDIot,BDIot>();
 
 // 全局共享 MongoDB 连接
 var client = new MongoClient(builder.Configuration.GetValue<string>("ConnectionStrings:BookDb"));

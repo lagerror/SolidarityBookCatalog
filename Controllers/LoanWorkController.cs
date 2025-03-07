@@ -14,6 +14,7 @@ using System;
 using System.Net;
 using System.Reflection.PortableExecutable;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using System.Web;
 using static Microsoft.Extensions.Logging.EventSource.LoggingEventSource;
@@ -36,9 +37,10 @@ namespace SolidarityBookCatalog.Controllers
         IWeChatService _weChatService;
         private readonly ToolService _toolService;
         HttpClient _httpClient;
+        IBDIot _BDIot;
 
         private readonly string _baseUrl;
-        public LoanWorkController(IMongoClient client,LoanWorkService loanWorkService,IWeChatService weChatService, HttpClient httpClient, IConfiguration configuration,ToolService toolService, ILogger<LoanWorkController> logger)
+        public LoanWorkController(IMongoClient client,LoanWorkService loanWorkService,IWeChatService weChatService, HttpClient httpClient, IConfiguration configuration,ToolService toolService, ILogger<LoanWorkController> logger,IBDIot bDIot)
         {
             _configuration = configuration;
             _toolService = toolService;
@@ -50,6 +52,7 @@ namespace SolidarityBookCatalog.Controllers
             _loanWorkService= loanWorkService;
             _weChatService = weChatService;
             _logger = logger;
+            _BDIot = bDIot;
 
         }
 
@@ -71,6 +74,22 @@ namespace SolidarityBookCatalog.Controllers
                     break;
                 case "getDestinationLockerDetailAsync":
                     msg.Data=await _loanWorkService.getDestinationLockerDetailAsync(pars);
+                    break;
+                case "iotMsg":
+                    var iotMsg = new Msg();
+                    iotMsg.Message = "apply";
+                    iotMsg.Code = 0;
+                    iotMsg.Data = new
+                    {
+                        soureceLibary = "",
+                        readerNo = "",
+                        readerName = "",
+                        destionationLibar = "",
+                        bookName = "",
+                        bookIsbn = ""
+                    };
+
+                    await _BDIot.sendTopicMsgAsync($"solidarity/hubei.jingzhou.yangtzeu.library", iotMsg);
                     break;
             }
 
@@ -322,11 +341,10 @@ namespace SolidarityBookCatalog.Controllers
         public  async Task<IActionResult> apply (string readerOpenId= "rfWTm26wJZnpQ+S0JgywkZPQUU59YMTdoGVAEzPnfC2epRw1ZuI8EqIjbGPV8by9", string holdingId = "675805eff80692346fa8abe9", string destinationLocker = "898608341523D0678886")
         {
             Msg msg = new Msg();
+            string applyId=null;
+            LoanWork loanWork = new LoanWork(); ;
             try
-            {//rfWTm26wJZnpQ%252bS0Jgywkd1CwWuzRhO7mTGiI0%252fQZlY%253d  rfWTm26wJZnpQ+S0Jgywkd1CwWuzRhO7mTGiI0/QZlY= oS4N5tzvoJn2uJ7b1PzMJj99JgTw rfWTm26wJZnpQ+bS0Jgywkd1CwWuzRhO7mTGiI0%2fQZlY=    675805eff80692346fa8abe9   675805eff80692346fa8abe9
-                //string v3 = WebUtility.UrlDecode(readerOpenId);
-                //string v1 = Tools.EncryptStringToBytes_Aes("oS4N5tzvoJn2uJ7b1PzMJj99JgTw", _cryptKey, _cryptIv);
-                //string v2 = Tools.DecryptStringFromBytes_Aes(v1, _cryptKey, _cryptIv);
+            {
                 //将传入的openid做编码后传给前端
                string openId = HttpUtility.UrlEncode(readerOpenId);
                 //校验openId的解密
@@ -339,7 +357,7 @@ namespace SolidarityBookCatalog.Controllers
                 }
                 readerOpenId = ret.Item2;
 
-                LoanWork loanWork = new LoanWork();
+               
 
                 loanWork.HoldingDetail=await _loanWorkService.getHoldingDetailAsync(holdingId);
                 //如果没有找到对应的馆藏，直接返回
@@ -377,10 +395,19 @@ namespace SolidarityBookCatalog.Controllers
                 }
                 //插入数据库
                 await _loanWork.InsertOneAsync(loanWork);
+                //返回applyId,用于传参数
+                applyId = loanWork.Id.ToString();
                 msg.Code = 0;
-                msg.Message = "申请成功";
+                msg.Message = "apply";
+                msg.Data = new
+                {
+                    ApplyId = applyId,
+                    ReaderDetail = loanWork.Application.ReaderDetail,
+                    HoldingDetail = loanWork.HoldingDetail,
+                    DestinationLockerDetail = loanWork.Application.DestinationLockerDetail
+                };
                 //发送微信通知
-                if (loanWork.Application.ReaderDetail != null)
+                if (msg.Code==0)
                 {
                     var loan = new
                     {
@@ -392,6 +419,7 @@ namespace SolidarityBookCatalog.Controllers
                     };
                     await _weChatService.SendTemplateMessageAsync("loan", readerOpenId, $"https://reader.yangtzeu.edu.cn/wechat/my?openId={openId}", loan);
                 }
+               
 
             }
             catch (Exception ex)
@@ -400,7 +428,16 @@ namespace SolidarityBookCatalog.Controllers
                 msg.Message = ex.Message;
                 msg.Data = ex.StackTrace;
 
-            }   
+            }
+            //发送iot信息
+            if (msg.Code == 0)
+            {
+                Msg iotMsg = new Msg();
+                iotMsg.Message = "apply";
+                iotMsg.Code = 0;
+                iotMsg.Data = applyId;
+                await _BDIot.sendTopicMsgAsync($"solidarity/{loanWork.HoldingDetail.AppId}",iotMsg);
+            }
             return Ok(msg);
         }
 
@@ -417,127 +454,152 @@ namespace SolidarityBookCatalog.Controllers
         {
             Msg msg = new Msg();
             //校验openId的解密
-           
-            var ret =_toolService.DeCryptOpenId(openId);
-            if (!ret.Item1)
+            try
             {
-                msg.Code = 1;
-                msg.Message = $"OpenId解密失败";
-                return Ok(msg);
-            }
-            openId = ret.Item2;
-
-            //判断该人员是否为图书馆找书工作人员
-            var reader= _reader.FindAsync<Reader>(x => x.OpenId == openId).Result.FirstOrDefault();
-            if (reader == null)
-            {
-                msg.Code = 2;
-                msg.Message = "没有找到对应的工作人员";
-                return Ok(msg);
-
-            }
-            if (reader.Type == PublicEnum.Type.管理员 | reader.Type == PublicEnum.Type.馆际互借人员)
-            {
-               
-            }
-            else
-            {
-                msg.Code = 3;
-                msg.Message = $"该用户{reader.Name}没有馆际互借人员权限";
-                return Ok(msg);
-            }
-
-                //找到事务
-            var apply = _loanWork.FindAsync(x => x.Id == applyId).Result.FirstOrDefault();
-            if (apply == null)
-            {
-                msg.Code = 4;
-                msg.Message = "没找到对应申请事务号";
-                return Ok(msg);
-            }
-
-            //判断是否已经找书成功并入柜
-            if (apply.Status == PublicEnum.CirculationStatus.图书已找到)
-            {
-                msg.Code = 5;
-                msg.Message = "该申请已经完成了找书入柜";
-                return Ok(msg);
-            }
-
-            //建立图书馆人员处理流程节点
-            LibraryProcessingInfo libraryProcessingInfo = new LibraryProcessingInfo();
-
-
-            //开柜自动分配格口
-            string url = _baseUrl + $"/api/Locker/OpenEmptyCell?iccid={iccid}";
-            HttpResponseMessage response = await _httpClient.GetAsync(url);
-            // 确保HTTP响应状态为200 (OK)
-            if (response.IsSuccessStatusCode)
-            {
-                // 读取响应内容
-                string responseBody = await response.Content.ReadAsStringAsync();
-                var options = new JsonSerializerOptions
+                var ret = _toolService.DeCryptOpenId(openId);
+                if (!ret.Item1)
                 {
-                    PropertyNameCaseInsensitive = true
+                    msg.Code = 1;
+                    msg.Message = $"OpenId解密失败";
+                    return Ok(msg);
+                }
+                openId = ret.Item2;
 
-                    // 其他可能需要的选项
-                };
-                Msg msgTemp= System.Text.Json.JsonSerializer.Deserialize<Msg>(responseBody,options);
-
-                if (msgTemp.Code == 0)
+                //判断该人员是否为图书馆找书工作人员
+                var reader = _reader.FindAsync<Reader>(x => x.OpenId == openId).Result.FirstOrDefault();
+                if (reader == null)
                 {
-                    libraryProcessingInfo.LibrarianOpenId = openId;
-                    libraryProcessingInfo.LockerNumber =iccid;   //柜子
-                    libraryProcessingInfo.CellNumber = msgTemp.Message.Split('|')[1];   //格口
-                    apply.Status = PublicEnum.CirculationStatus.图书已找到;    //状态
-                    var temp=JsonSerializer.Deserialize<Locker>(msgTemp.Data.ToString(), options);
-                    libraryProcessingInfo.LockerDetail = temp;
+                    msg.Code = 2;
+                    msg.Message = "没有找到对应的工作人员";
+                    return Ok(msg);
+
+                }
+                if (reader.Type == PublicEnum.Type.管理员 | reader.Type == PublicEnum.Type.馆际互借人员)
+                {
+
                 }
                 else
                 {
-                    apply.Status = PublicEnum.CirculationStatus.申请终止;
-                    libraryProcessingInfo.Remark = msgTemp.Message;
-                    msg.Code= 6;
-                    msg.Message += msgTemp.Message;
+                    msg.Code = 3;
+                    msg.Message = $"该用户{reader.Name}没有馆际互借人员权限";
                     return Ok(msg);
                 }
-            }
-            else
-            {
-                msg.Code = 7;
-                msg.Message += $"开柜请求发送错误";
-                return Ok(msg);
-            }
-            //将图书馆取书信息加入到流程节点
-            libraryProcessingInfo.LibrarianDetail = await _loanWorkService.getLibrarianDetailAsync(openId);
-            //没有找到馆员信息，直接退出
-            if (libraryProcessingInfo.LibrarianDetail == null) 
-            {
-                msg.Code = 8;
-                msg.Message = "没有找到对应的人员信息";
-            
-            }
 
-            apply.LibraryProcessing = libraryProcessingInfo;
-            //更新事务
-           var result=  await _loanWork.ReplaceOneAsync(x => x.Id == applyId, apply);
-            if (result.ModifiedCount != 1)
-            {
-                msg.Code = 8;
-                msg.Message = "更新数据不成功";
-            }
-            else
-            {
-                msg.Code = 0;
-                msg.Message = "找书入柜成功";
-                msg.Data = new
+                //找到事务
+                var apply = _loanWork.FindAsync(x => x.Id == applyId).Result.FirstOrDefault();
+                if (apply == null)
                 {
-                    LibrarianOpenId = libraryProcessingInfo.LibrarianOpenId,
-                    LockerNumber = libraryProcessingInfo.LockerNumber,
-                    CellNumber = libraryProcessingInfo.CellNumber
-                };
-            }
+                    msg.Code = 4;
+                    msg.Message = "没找到对应申请事务号";
+                    return Ok(msg);
+                }
 
+                //判断是否已经找书成功并入柜
+                if (apply.Status == PublicEnum.CirculationStatus.图书已找到)
+                {
+                    msg.Code = 5;
+                    msg.Message = "该申请已经完成了找书入柜";
+                    return Ok(msg);
+                }
+
+                //判断流程
+                if (apply.Application == null || apply.Status != PublicEnum.CirculationStatus.已申请)
+                {
+                    msg.Code = 10;
+                    msg.Message = "流程不对或者申请为空";
+                    return Ok(msg); 
+                }
+
+                //建立图书馆人员处理流程节点
+                LibraryProcessingInfo libraryProcessingInfo = new LibraryProcessingInfo();
+
+
+                //开柜自动分配格口
+                string url = _baseUrl + $"/api/Locker/OpenEmptyCell?iccid={iccid}";
+                HttpResponseMessage response = await _httpClient.GetAsync(url);
+                // 确保HTTP响应状态为200 (OK)
+                if (response.IsSuccessStatusCode)
+                {
+                    // 读取响应内容
+                    string responseBody = await response.Content.ReadAsStringAsync();
+                    var options = new JsonSerializerOptions
+                    {
+                        PropertyNameCaseInsensitive = true
+
+                        // 其他可能需要的选项
+                    };
+                    Msg msgTemp = System.Text.Json.JsonSerializer.Deserialize<Msg>(responseBody, options);
+
+                    if (msgTemp.Code == 0)
+                    {
+                        libraryProcessingInfo.LibrarianOpenId = openId;
+                        libraryProcessingInfo.LockerNumber = iccid;   //柜子
+                        libraryProcessingInfo.CellNumber = msgTemp.Message.Split('|')[1];   //格口
+                        apply.Status = PublicEnum.CirculationStatus.图书已找到;    //状态
+                        var temp = JsonSerializer.Deserialize<Locker>(msgTemp.Data.ToString(), options);
+                        libraryProcessingInfo.LockerDetail = temp;
+                    }
+                    else
+                    {
+                        apply.Status = PublicEnum.CirculationStatus.申请终止;
+                        libraryProcessingInfo.Remark = msgTemp.Message;
+                        msg.Code = 6;
+                        msg.Message += msgTemp.Message;
+                        return Ok(msg);
+                    }
+                }
+                else
+                {
+                    msg.Code = 7;
+                    msg.Message += $"开柜请求发送错误";
+                    return Ok(msg);
+                }
+                //将图书馆取书信息加入到流程节点
+                libraryProcessingInfo.LibrarianDetail = await _loanWorkService.getLibrarianDetailAsync(openId);
+                //没有找到馆员信息，直接退出
+                if (libraryProcessingInfo.LibrarianDetail == null)
+                {
+                    msg.Code = 8;
+                    msg.Message = "没有找到对应的人员信息";
+
+                }
+
+                apply.LibraryProcessing = libraryProcessingInfo;
+                //更新事务
+                var result = await _loanWork.ReplaceOneAsync(x => x.Id == applyId, apply);
+                if (result.ModifiedCount != 1)
+                {
+                    msg.Code = 9;
+                    msg.Message = "更新数据不成功";
+                }
+                else
+                {
+                    msg.Code = 0;
+                    msg.Message = "libraryProcess";
+                    msg.Data = new
+                    {
+                        ApplyId = applyId,
+                        LibrarianOpenId = libraryProcessingInfo.LibrarianOpenId,
+                        LockerNumber = libraryProcessingInfo.LockerNumber,
+                        CellNumber = libraryProcessingInfo.CellNumber,
+                        LibrarianDetail = libraryProcessingInfo.LibrarianDetail
+                    };
+                }
+                //发送iot消息，为了减小流量和安全，只保留applyId,详细信息通过search去查
+                if (msg.Code == 0)
+                {
+                    Msg iotMsg = new Msg();
+                    iotMsg.Message = "libraryProcess";
+                    iotMsg.Code = 0;
+                    iotMsg.Data = applyId;
+                    await _BDIot.sendTopicMsgAsync($"solidarity/{apply.HoldingDetail.AppId}", iotMsg);
+                }
+            }
+            catch (Exception ex) {
+                msg.Code = 100;
+                msg.Message=ex.Message;
+                msg.Data = ex.StackTrace;
+            }
             return Ok(msg);
         }
 
@@ -553,117 +615,142 @@ namespace SolidarityBookCatalog.Controllers
         public async Task<IActionResult> transport(string applyId = "67c30b1bf80110a819c18fce", string openId = "rfWTm26wJZnpQ+S0JgywkZPQUU59YMTdoGVAEzPnfC2epRw1ZuI8EqIjbGPV8by9", string remark="快递员从快递柜取书成功")
         {
             Msg msg = new Msg();
-            //校验openId的解密
-            var ret =_toolService.DeCryptOpenId(openId);
-            if (!ret.Item1)
+            //一try到底不好
+            try
             {
-                msg.Code = 1;
-                msg.Message = $"OpenId解密失败";
-                return Ok(msg);
-            }
-            openId = ret.Item2;
-
-            //判断该人员是否为图书馆找书工作人员
-            var reader = _reader.FindAsync<Reader>(x => x.OpenId == openId).Result.FirstOrDefault();
-            if (reader == null)
-            {
-                msg.Code = 2;
-                msg.Message = "没有找到对应的工作人员";
-                return Ok(msg);
-
-            }
-            if (reader.Type == PublicEnum.Type.管理员 | reader.Type == PublicEnum.Type.快递人员)
-            {
-
-            }
-            else
-            {
-                msg.Code = 3;
-                msg.Message = $"该用户{reader.Name}没有快递人员取书权限";
-                return Ok(msg);
-            }
-
-            //找到事务
-            var apply = _loanWork.FindAsync(x => x.Id == applyId).Result.FirstOrDefault();
-            if (apply == null)
-            {
-                msg.Code = 4;
-                msg.Message = "没找到对应申请事务号";
-                return Ok(msg);
-            }
-
-            //判断是否由快递人员取书并运输中
-            if (apply.Status == PublicEnum.CirculationStatus.运输中)
-            {
-                msg.Code = 5;
-                msg.Message = "该申请已经由快递人员取书并运输中";
-                return Ok(msg);
-            }
-
-            //建立快递人员处理流程节点
-            TransportInfo transportInfo = new TransportInfo();
-
-            //打开指定柜门
-            string url = _baseUrl + $"/api/Locker/OpenCell?iccid={apply.LibraryProcessing.LockerNumber}&id={apply.LibraryProcessing.CellNumber}";
-            HttpResponseMessage response = await _httpClient.GetAsync(url);
-            // 确保HTTP响应状态为200 (OK)
-            if (response.IsSuccessStatusCode)
-            {
-                // 读取响应内容
-                string responseBody = await response.Content.ReadAsStringAsync();
-                var options = new JsonSerializerOptions
+                //校验openId的解密
+                var ret = _toolService.DeCryptOpenId(openId);
+                if (!ret.Item1)
                 {
-                    PropertyNameCaseInsensitive = true
-                };
-                Msg msgTemp = JsonSerializer.Deserialize<Msg>(responseBody, options);
-                
-                if (msgTemp.Code == 0)
+                    msg.Code = 1;
+                    msg.Message = $"OpenId解密失败";
+                    return Ok(msg);
+                }
+                openId = ret.Item2;
+
+                //判断该人员是否为图书馆找书工作人员
+                var reader = _reader.FindAsync<Reader>(x => x.OpenId == openId).Result.FirstOrDefault();
+                if (reader == null)
                 {
-                    apply.Status = PublicEnum.CirculationStatus.运输中;    //状态
-                    transportInfo.CourierOpenId = openId;
+                    msg.Code = 2;
+                    msg.Message = "没有找到对应的工作人员";
+                    return Ok(msg);
+
+                }
+                if (reader.Type == PublicEnum.Type.管理员 | reader.Type == PublicEnum.Type.快递人员)
+                {
+
                 }
                 else
                 {
-                    apply.Status = PublicEnum.CirculationStatus.流程异常;
-                    transportInfo.Remark = $"快递员开柜返回异常：{msgTemp.Message}";
-                    msg.Code = 6;
-                    msg.Message +=$" 快递员开柜返回异常：{msgTemp.Message}";
+                    msg.Code = 3;
+                    msg.Message = $"该用户{reader.Name}没有快递人员取书权限";
                     return Ok(msg);
                 }
-            }
-            else
-            {
-                msg.Code = 7;
-                msg.Message= $"快递员取书请求发送错误";
-                return Ok(msg);
-            }
 
-            //将图书馆快递人员加入到流程节点
-            transportInfo.CourierDetail=await _loanWorkService.getCourierDetailAsync(openId);
-            if (transportInfo.CourierDetail==null)
-            {
-                msg.Code = 8;
-                msg.Message = "没有找到快递员信息";
-                return Ok(msg);
-            }
-            apply.Transport = transportInfo;
-            //更新事务
-            var result = await _loanWork.ReplaceOneAsync(x => x.Id == applyId, apply);
-            if (result.ModifiedCount != 1)
-            {
-                msg.Code = 9;
-                msg.Message = "更新数据不成功";
-            }
-            else
-            {
-                msg.Code = 0;
-                msg.Message = "快递员取书成功";
-                msg.Data = new
+                //找到事务
+                var apply = _loanWork.FindAsync(x => x.Id == applyId).Result.FirstOrDefault();
+                if (apply == null)
                 {
-                    LibrarianOpenId = transportInfo.CourierOpenId,
-                    Remark= transportInfo.Remark,
-                    PickupTime=transportInfo.PickupTime
-                };
+                    msg.Code = 4;
+                    msg.Message = "没找到对应申请事务号";
+                    return Ok(msg);
+                }
+
+                //判断是否由快递人员取书并运输中
+                if (apply.Status == PublicEnum.CirculationStatus.运输中)
+                {
+                    msg.Code = 5;
+                    msg.Message = "该申请已经由快递人员取书并运输中";
+                    return Ok(msg);
+                }
+                //如果流程不对，或者找书人员没有找到书
+                if (apply.LibraryProcessing == null | apply.Status != PublicEnum.CirculationStatus.已申请)
+                {
+                    msg.Code = 10;
+                    msg.Message = "流程不对或者没有找到图书";
+                    return Ok(msg);
+                }
+                //建立快递人员处理流程节点
+                TransportInfo transportInfo = new TransportInfo();
+
+                //打开指定柜门
+                string url = _baseUrl + $"/api/Locker/OpenCell?iccid={apply.LibraryProcessing.LockerNumber}&id={apply.LibraryProcessing.CellNumber}";
+                HttpResponseMessage response = await _httpClient.GetAsync(url);
+                // 确保HTTP响应状态为200 (OK)
+                if (response.IsSuccessStatusCode)
+                {
+                    // 读取响应内容
+                    string responseBody = await response.Content.ReadAsStringAsync();
+                    var options = new JsonSerializerOptions
+                    {
+                        PropertyNameCaseInsensitive = true
+                    };
+                    Msg msgTemp = JsonSerializer.Deserialize<Msg>(responseBody, options);
+
+                    if (msgTemp.Code == 0)
+                    {
+                        apply.Status = PublicEnum.CirculationStatus.运输中;    //状态
+                        transportInfo.CourierOpenId = openId;
+                    }
+                    else
+                    {
+                        apply.Status = PublicEnum.CirculationStatus.流程异常;
+                        transportInfo.Remark = $"快递员开柜返回异常：{msgTemp.Message}";
+                        msg.Code = 6;
+                        msg.Message += $" 快递员开柜返回异常：{msgTemp.Message}";
+                        return Ok(msg);
+                    }
+                }
+                else
+                {
+                    msg.Code = 7;
+                    msg.Message = $"快递员取书请求发送错误";
+                    return Ok(msg);
+                }
+
+                //将图书馆快递人员加入到流程节点
+                transportInfo.CourierDetail = await _loanWorkService.getCourierDetailAsync(openId);
+                if (transportInfo.CourierDetail == null)
+                {
+                    msg.Code = 8;
+                    msg.Message = "没有找到快递员信息";
+                    return Ok(msg);
+                }
+                apply.Transport = transportInfo;
+                //更新事务
+                var result = await _loanWork.ReplaceOneAsync(x => x.Id == applyId, apply);
+                if (result.ModifiedCount != 1)
+                {
+                    msg.Code = 9;
+                    msg.Message = "更新数据不成功";
+                }
+                else
+                {
+                    msg.Code = 0;
+                    msg.Message = "transport";
+                    msg.Data = new
+                    {
+                        ApplyId = applyId,
+                        LibrarianOpenId = transportInfo.CourierOpenId,
+                        CourierDetail = transportInfo.CourierDetail,
+                        Remark = transportInfo.Remark,
+                        PickupTime = transportInfo.PickupTime
+                    };
+                }
+                //发送iot消息，为了减小流量和安全，只保留applyId,详细信息通过search去查
+                if (msg.Code == 0)
+                {
+                    Msg iotMsg = new Msg();
+                    iotMsg.Message = "transport";
+                    iotMsg.Code = 0;
+                    iotMsg.Data = applyId;
+                    await _BDIot.sendTopicMsgAsync($"solidarity/{apply.HoldingDetail.AppId}", iotMsg);
+                }
+            } catch (Exception ex) {
+                msg.Code = 100;
+                msg.Message=ex.Message;
+                msg.Data=ex.StackTrace;
             }
 
             return Ok(msg);
@@ -681,152 +768,178 @@ namespace SolidarityBookCatalog.Controllers
         public async Task<IActionResult> DestinationLocker(string applyId = "67c30b1bf80110a819c18fce", string openId = "rfWTm26wJZnpQ+S0JgywkZPQUU59YMTdoGVAEzPnfC2epRw1ZuI8EqIjbGPV8by9", string remark = "快递员存入快递柜成功")
         {
             Msg msg = new Msg();
-            //校验openId的解密
-            string sourceOpenId= openId;
-            var ret = _toolService.DeCryptOpenId(openId);
-            if (!ret.Item1)
+            try
             {
-                msg.Code = 1;
-                msg.Message = $"OpenId解密失败";
-                return Ok(msg);
-            }
-            openId = ret.Item2;
-
-            //判断该人员是否快递工作人员
-            var reader = _reader.FindAsync<Reader>(x => x.OpenId == openId).Result.FirstOrDefault();
-            if (reader == null)
-            {
-                msg.Code = 2;
-                msg.Message = "没有找到对应的工作人员";
-                return Ok(msg);
-
-            }
-            if (reader.Type == PublicEnum.Type.管理员 | reader.Type == PublicEnum.Type.快递人员)
-            {
-
-            }
-            else
-            {
-                msg.Code = 3;
-                msg.Message = $"该用户{reader.Name}没有快递人员存书权限";
-                return Ok(msg);
-            }
-
-            //找到事务
-            var apply = _loanWork.FindAsync(x => x.Id == applyId).Result.FirstOrDefault();
-            if (apply == null)
-            {
-                msg.Code = 4;
-                msg.Message = "没找到对应申请事务号";
-                return Ok(msg);
-            }
-
-            //判断是否由快递人员取书并运输中
-            if (apply.Status == PublicEnum.CirculationStatus.已到达目的地)
-            {
-                msg.Code = 5;
-                msg.Message = "该申请已经由快递人员存放入目的取书柜";
-                return Ok(msg);
-            }
-
-            //建立快递人员处理流程节点
-            DestinationLockerInfo destinationLockerInfo = new DestinationLockerInfo();
-
-
-            //开柜自动分配格口
-            string iccid = apply.Application.DestinationLocker;
-            string url = _baseUrl + $"/api/Locker/OpenEmptyCell?iccid={iccid}"; 
-            HttpResponseMessage response = await _httpClient.GetAsync(url);
-            // 确保HTTP响应状态为200 (OK)
-            if (response.IsSuccessStatusCode)
-            {
-                // 读取响应内容
-                string responseBody = await response.Content.ReadAsStringAsync();
-                var options = new JsonSerializerOptions
+                //校验openId的解密
+                string sourceOpenId = openId;
+                var ret = _toolService.DeCryptOpenId(openId);
+                if (!ret.Item1)
                 {
-                    PropertyNameCaseInsensitive = true
-                };
-                Msg msgTemp = JsonSerializer.Deserialize<Msg>(responseBody, options);
+                    msg.Code = 1;
+                    msg.Message = $"OpenId解密失败";
+                    return Ok(msg);
+                }
+                openId = ret.Item2;
 
-                if (msgTemp.Code == 0)
+                //判断该人员是否快递工作人员
+                var reader = _reader.FindAsync<Reader>(x => x.OpenId == openId).Result.FirstOrDefault();
+                if (reader == null)
+                {
+                    msg.Code = 2;
+                    msg.Message = "没有找到对应的工作人员";
+                    return Ok(msg);
+
+                }
+                if (reader.Type == PublicEnum.Type.管理员 | reader.Type == PublicEnum.Type.快递人员)
                 {
 
-                    apply.Status = PublicEnum.CirculationStatus.已到达目的地;    //状态
-                    destinationLockerInfo.CourierOpenId = openId;
-                    destinationLockerInfo.LockerNumber = iccid;
-                    destinationLockerInfo.CellNumber = msgTemp.Message.Split('|')[1]; //格口
-                    //解析目的快递柜信息
-                    var temp = JsonSerializer.Deserialize<Locker>(msgTemp.Data.ToString(), options);
-                    destinationLockerInfo.LockerDetail = temp;
-                    destinationLockerInfo.Remark = remark;
                 }
                 else
                 {
-                    apply.Status = PublicEnum.CirculationStatus.流程异常;
-                    destinationLockerInfo.Remark = $"快递员存入开柜返回异常：{msgTemp.Message}";
-                    msg.Code = 6;
-                    msg.Message += $" 快递员存入开柜返回异常：{msgTemp.Message}";
+                    msg.Code = 3;
+                    msg.Message = $"该用户{reader.Name}没有快递人员存书权限";
                     return Ok(msg);
                 }
-            }
-            else
-            {
-                msg.Code = 7;
-                msg.Message = $"快递员存入请求发送错误";
-                return Ok(msg);
-            }
 
-            //将快递人员加入到流程节点
-            destinationLockerInfo.CourierDetail = await _loanWorkService.getCourierDetailAsync(openId);
-            if (destinationLockerInfo.CourierDetail==null)
-            {
-                msg.Code = 8;
-                msg.Message = "没有找到快递人员信息";
-                return Ok(msg);
-            }
-            apply.DestinationLocker = destinationLockerInfo;
-            //更新事务
-            var result = await _loanWork.ReplaceOneAsync(x => x.Id == applyId, apply);
-            if (result.ModifiedCount != 1)
-            {
-                msg.Code = 9;
-                msg.Message = "更新数据不成功";
-            }
-            else
-            {
-                msg.Code = 0;
-                msg.Message = "快递员存入图书成功";
-                msg.Data = new
+                //找到事务
+                var apply = _loanWork.FindAsync(x => x.Id == applyId).Result.FirstOrDefault();
+                if (apply == null)
                 {
-                    LibrarianOpenId = destinationLockerInfo.CourierOpenId,
-                    Remark = destinationLockerInfo.Remark,
-                    DepositTime = destinationLockerInfo.DepositTime,
-                    LockerNumber = destinationLockerInfo.LockerNumber,
-                    CellNumber = destinationLockerInfo.CellNumber
-                };
-                /*
-                学校：{ { keyword1.DATA} }
-                通知人：{ { keyword2.DATA} }
-                时间：{ { keyword3.DATA} }
-                通知内容：{ { keyword4.DATA} }
-                */
-
-                //发送微信通知
-                if (destinationLockerInfo.CellNumber!= null)
-                {
-                    var notice = new
-                    {
-                        keyword1 = new { value = $"{destinationLockerInfo.LockerDetail.Owner}:{destinationLockerInfo.LockerDetail.Location}" },  //学校
-                        keyword2 = new { value = $"快递员联系方式：{destinationLockerInfo.CourierDetail.name}:{destinationLockerInfo.CourierDetail.phone}" },  //通知人，快递员电话
-                        keyword3 = new { value = $"{destinationLockerInfo.DepositTime?.ToString("yyyy-MM-dd")}" },   // 时间
-                        keyword4 = new { value = $"{destinationLockerInfo.LockerDetail.Area}: {destinationLockerInfo.CellNumber}" },   //取货的地点
-                       
-                    };
-                    await _weChatService.SendTemplateMessageAsync("notice", openId, $"https://reader.yangtzeu.edu.cn/wechat/my?openId={sourceOpenId}", notice);
+                    msg.Code = 4;
+                    msg.Message = "没找到对应申请事务号";
+                    return Ok(msg);
                 }
 
-            }
+                //判断是否由快递人员取书并运输中
+                if (apply.Status == PublicEnum.CirculationStatus.已到达目的地)
+                {
+                    msg.Code = 5;
+                    msg.Message = "该申请已经由快递人员存放入目的取书柜";
+                    return Ok(msg);
+                }
 
+                //强制流程检查
+                if (apply.Status != PublicEnum.CirculationStatus.运输中 || apply.Transport == null)
+                {
+                    msg.Code = 10;
+                    msg.Message = "流程不对或者快递员取书异常";
+                    return Ok(msg);
+                }
+
+                //建立快递人员处理流程节点
+                DestinationLockerInfo destinationLockerInfo = new DestinationLockerInfo();
+
+
+                //开柜自动分配格口
+                string iccid = apply.Application.DestinationLocker;
+                string url = _baseUrl + $"/api/Locker/OpenEmptyCell?iccid={iccid}";
+                HttpResponseMessage response = await _httpClient.GetAsync(url);
+                // 确保HTTP响应状态为200 (OK)
+                if (response.IsSuccessStatusCode)
+                {
+                    // 读取响应内容
+                    string responseBody = await response.Content.ReadAsStringAsync();
+                    var options = new JsonSerializerOptions
+                    {
+                        PropertyNameCaseInsensitive = true
+                    };
+                    Msg msgTemp = JsonSerializer.Deserialize<Msg>(responseBody, options);
+
+                    if (msgTemp.Code == 0)
+                    {
+
+                        apply.Status = PublicEnum.CirculationStatus.已到达目的地;    //状态
+                        destinationLockerInfo.CourierOpenId = openId;
+                        destinationLockerInfo.LockerNumber = iccid;
+                        destinationLockerInfo.CellNumber = msgTemp.Message.Split('|')[1]; //格口
+                                                                                          //解析目的快递柜信息
+                        var temp = JsonSerializer.Deserialize<Locker>(msgTemp.Data.ToString(), options);
+                        destinationLockerInfo.LockerDetail = temp;
+                        destinationLockerInfo.Remark = remark;
+                    }
+                    else
+                    {
+                        apply.Status = PublicEnum.CirculationStatus.流程异常;
+                        destinationLockerInfo.Remark = $"快递员存入开柜返回异常：{msgTemp.Message}";
+                        msg.Code = 6;
+                        msg.Message += $" 快递员存入开柜返回异常：{msgTemp.Message}";
+                        return Ok(msg);
+                    }
+                }
+                else
+                {
+                    msg.Code = 7;
+                    msg.Message = $"快递员存入请求发送错误";
+                    return Ok(msg);
+                }
+
+                //将快递人员加入到流程节点
+                destinationLockerInfo.CourierDetail = await _loanWorkService.getCourierDetailAsync(openId);
+                if (destinationLockerInfo.CourierDetail == null)
+                {
+                    msg.Code = 8;
+                    msg.Message = "没有找到快递人员信息";
+                    return Ok(msg);
+                }
+                apply.DestinationLocker = destinationLockerInfo;
+                //更新事务
+                var result = await _loanWork.ReplaceOneAsync(x => x.Id == applyId, apply);
+                if (result.ModifiedCount != 1)
+                {
+                    msg.Code = 9;
+                    msg.Message = "更新数据不成功";
+                }
+                else
+                {
+                    msg.Code = 0;
+                    msg.Message = "DestinationLocker";
+                    msg.Data = new
+                    {
+                        ApplyId = applyId,
+                        LibrarianOpenId = destinationLockerInfo.CourierOpenId,
+                        CourierDetail = destinationLockerInfo.CourierDetail,
+                        Remark = destinationLockerInfo.Remark,
+                        DepositTime = destinationLockerInfo.DepositTime,
+                        LockerNumber = destinationLockerInfo.LockerNumber,
+                        CellNumber = destinationLockerInfo.CellNumber
+                    };
+                    /*
+                    学校：{ { keyword1.DATA} }
+                    通知人：{ { keyword2.DATA} }
+                    时间：{ { keyword3.DATA} }
+                    通知内容：{ { keyword4.DATA} }
+                    */
+
+                    //发送微信通知
+                    if (destinationLockerInfo.CellNumber != null)
+                    {
+                        var notice = new
+                        {
+                            keyword1 = new { value = $"{destinationLockerInfo.LockerDetail.Owner}:{destinationLockerInfo.LockerDetail.Location}" },  //学校
+                            keyword2 = new { value = $"快递员联系方式：{destinationLockerInfo.CourierDetail.name}:{destinationLockerInfo.CourierDetail.phone}" },  //通知人，快递员电话
+                            keyword3 = new { value = $"{destinationLockerInfo.DepositTime?.ToString("yyyy-MM-dd")}" },   // 时间
+                            keyword4 = new { value = $"{destinationLockerInfo.LockerDetail.Area}: {destinationLockerInfo.CellNumber}" },   //取货的地点
+
+                        };
+                        await _weChatService.SendTemplateMessageAsync("notice", openId, $"https://reader.yangtzeu.edu.cn/wechat/my?openId={sourceOpenId}", notice);
+                    }
+
+                }
+                //发送iot消息，为了减小流量和安全，只保留applyId,详细信息通过search去查
+                if (msg.Code == 0)
+                {
+                    Msg iotMsg = new Msg();
+                    iotMsg.Message = "DestinationLocker";
+                    iotMsg.Code = 0;
+                    iotMsg.Data = applyId;
+                    await _BDIot.sendTopicMsgAsync($"solidarity/{apply.HoldingDetail.AppId}", iotMsg);
+                }
+            }
+            catch (Exception ex) { 
+                msg.Code = 100;
+                msg.Message = ex.Message;
+                msg.Data = ex.StackTrace;
+            }
             return Ok(msg);
         }
 
@@ -843,118 +956,142 @@ namespace SolidarityBookCatalog.Controllers
         {
             Msg msg = new Msg();
             //校验openId的解密
-            
-            var ret = _toolService.DeCryptOpenId(openId);
-            if (!ret.Item1)
+            try
             {
-                msg.Code = 1;
-                msg.Message = $"OpenId解密失败";
-                return Ok(msg);
-            }
-            openId = ret.Item2;
-
-            //判断该人员是否为注册读者
-            var reader = _reader.FindAsync<Reader>(x => x.OpenId == openId).Result.FirstOrDefault();
-            if (reader == null)
-            {
-                msg.Code = 2;
-                msg.Message = "没有找到对应的人员";
-                return Ok(msg);
-
-            }
-         
-
-            //找到事务
-            var apply = _loanWork.FindAsync(x => x.Id == applyId).Result.FirstOrDefault();
-            if (apply == null)
-            {
-                msg.Code = 4;
-                msg.Message = "没找到对应申请事务号";
-                return Ok(msg);
-            }
-
-            //判断申请者是否已经取出图书
-            if (apply.Status == PublicEnum.CirculationStatus.已完成取书)
-            {
-                msg.Code = 5;
-                msg.Message = "该申请已经由借阅者取书成功";
-                return Ok(msg);
-            }
-
-            //判断是否由申请者本人取书
-            if(openId != apply.Application.ReaderOpenId)
-            {
-                msg.Code = 6;
-                msg.Message = "该申请不是由本人取书";
-                return Ok(msg);
-            }
-
-            //建立取书人处理流程节点
-            PickupInfo pickupInfo = new PickupInfo();
-
-            //打开指定格口
-            string url = _baseUrl + $"/api/Locker/OpenCell?iccid={apply.LibraryProcessing.LockerNumber}&id={apply.LibraryProcessing.CellNumber}";
-
-            HttpResponseMessage response = await _httpClient.GetAsync(url);
-            // 确保HTTP响应状态为200 (OK)
-            if (response.IsSuccessStatusCode)
-            {
-                // 读取响应内容
-                string responseBody = await response.Content.ReadAsStringAsync();
-                var options = new JsonSerializerOptions
+                var ret = _toolService.DeCryptOpenId(openId);
+                if (!ret.Item1)
                 {
-                    PropertyNameCaseInsensitive = true
-                };
-                Msg msgTemp = System.Text.Json.JsonSerializer.Deserialize<Msg>(responseBody, options);
+                    msg.Code = 1;
+                    msg.Message = $"OpenId解密失败";
+                    return Ok(msg);
+                }
+                openId = ret.Item2;
 
-                if (msgTemp.Code == 0)
+                //判断该人员是否为注册读者
+                var reader = _reader.FindAsync<Reader>(x => x.OpenId == openId).Result.FirstOrDefault();
+                if (reader == null)
                 {
+                    msg.Code = 2;
+                    msg.Message = "没有找到对应的人员";
+                    return Ok(msg);
 
-                    apply.Status = PublicEnum.CirculationStatus.已完成取书;    //状态
-                    pickupInfo.ReaderOpenId = openId;
-                    pickupInfo.LockerNumber = apply.DestinationLocker?.LockerNumber;
-                    pickupInfo.CellNumber = msgTemp.Message.Split('|')[1]; //格口
-                    pickupInfo.Remark = remark;
+                }
+
+
+                //找到事务
+                var apply = _loanWork.FindAsync(x => x.Id == applyId).Result.FirstOrDefault();
+                if (apply == null)
+                {
+                    msg.Code = 4;
+                    msg.Message = "没找到对应申请事务号";
+                    return Ok(msg);
+                }
+
+                //判断申请者是否已经取出图书
+                if (apply.Status == PublicEnum.CirculationStatus.已完成取书)
+                {
+                    msg.Code = 5;
+                    msg.Message = "该申请已经由借阅者取书成功";
+                    return Ok(msg);
+                }
+                //强制判断流程
+                if (apply.Status != PublicEnum.CirculationStatus.已到达目的地 || apply.DestinationLocker == null) 
+                {
+                    msg.Code = 10;
+                    msg.Message = "流程不对或者图书没有到达目的地";
+                    return Ok(msg); 
+                }
+
+                //判断是否由申请者本人取书
+                if (openId != apply.Application.ReaderOpenId)
+                {
+                    msg.Code = 6;
+                    msg.Message = "该申请不是由本人取书";
+                    return Ok(msg);
+                }
+
+
+                //建立取书人处理流程节点
+                PickupInfo pickupInfo = new PickupInfo();
+
+                //打开指定格口
+                string url = _baseUrl + $"/api/Locker/OpenCell?iccid={apply.LibraryProcessing.LockerNumber}&id={apply.LibraryProcessing.CellNumber}";
+
+                HttpResponseMessage response = await _httpClient.GetAsync(url);
+                // 确保HTTP响应状态为200 (OK)
+                if (response.IsSuccessStatusCode)
+                {
+                    // 读取响应内容
+                    string responseBody = await response.Content.ReadAsStringAsync();
+                    var options = new JsonSerializerOptions
+                    {
+                        PropertyNameCaseInsensitive = true
+                    };
+                    Msg msgTemp = System.Text.Json.JsonSerializer.Deserialize<Msg>(responseBody, options);
+
+                    if (msgTemp.Code == 0)
+                    {
+
+                        apply.Status = PublicEnum.CirculationStatus.已完成取书;    //状态
+                        pickupInfo.ReaderOpenId = openId;
+                        pickupInfo.LockerNumber = apply.DestinationLocker?.LockerNumber;
+                        pickupInfo.CellNumber = msgTemp.Message.Split('|')[1]; //格口
+                        pickupInfo.Remark = remark;
+                    }
+                    else
+                    {
+                        apply.Status = PublicEnum.CirculationStatus.流程异常;
+                        pickupInfo.Remark = $"申请者取书返回异常：{msgTemp.Message}";
+                        msg.Code = 6;
+                        msg.Message += $"申请者取书返回异常：{msgTemp.Message}";
+                        return Ok(msg);
+                    }
                 }
                 else
                 {
-                    apply.Status = PublicEnum.CirculationStatus.流程异常;
-                    pickupInfo.Remark = $"申请者取书返回异常：{msgTemp.Message}";
-                    msg.Code = 6;
-                    msg.Message += $"申请者取书返回异常：{msgTemp.Message}";
+                    msg.Code = 7;
+                    msg.Message = $"申请者取书请求发送错误";
                     return Ok(msg);
                 }
-            }
-            else
-            {
-                msg.Code = 7;
-                msg.Message = $"申请者取书请求发送错误";
-                return Ok(msg);
-            }
 
-            //将图书馆取书信息加入到流程节点
-            apply.Pickup= pickupInfo;
-            //更新事务
-            var result = await _loanWork.ReplaceOneAsync(x => x.Id == applyId, apply);
-            if (result.ModifiedCount != 1)
-            {
-                msg.Code = 8;
-                msg.Message = "更新数据不成功";
-            }
-            else
-            {
-                msg.Code = 0;
-                msg.Message = "申请者取书成功";
-                msg.Data = new
+                //将图书馆取书信息加入到流程节点
+                apply.Pickup = pickupInfo;
+                //更新事务
+                var result = await _loanWork.ReplaceOneAsync(x => x.Id == applyId, apply);
+                if (result.ModifiedCount != 1)
                 {
-                    ReaderOpenId =await _loanWorkService.getReaderDetailAsync( pickupInfo.ReaderOpenId), 
-                    Remark = pickupInfo.Remark,
-                    PickupTime = pickupInfo.PickupTime,
-                    LockerNumber = pickupInfo.LockerNumber,
-                    CellNumber = pickupInfo.CellNumber
-                };
+                    msg.Code = 8;
+                    msg.Message = "更新数据不成功";
+                }
+                else
+                {
+                    msg.Code = 0;
+                    msg.Message = "Pickup";
+                    msg.Data = new
+                    {
+                        ApplyId = applyId,
+                        ReaderOpenId = await _loanWorkService.getReaderDetailAsync(pickupInfo.ReaderOpenId),
+                        Remark = pickupInfo.Remark,
+                        PickupTime = pickupInfo.PickupTime,
+                        LockerNumber = pickupInfo.LockerNumber,
+                        CellNumber = pickupInfo.CellNumber
+                    };
+                }
+                //发送iot消息，为了减小流量和安全，只保留applyId,详细信息通过search去查
+                if (msg.Code == 0)
+                {
+                    Msg iotMsg = new Msg();
+                    iotMsg.Message = "Pickup";
+                    iotMsg.Code = 0;
+                    iotMsg.Data = applyId;
+                    await _BDIot.sendTopicMsgAsync($"solidarity/{apply.HoldingDetail.AppId}", iotMsg);
+                }
             }
-
+            catch (Exception ex) {
+                msg.Code = 100;
+                msg.Message = ex.Message;
+                msg.Data = ex.StackTrace;
+            }
             return Ok(msg);
         }
     }

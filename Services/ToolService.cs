@@ -1,4 +1,10 @@
-﻿namespace SolidarityBookCatalog.Services
+﻿using QRCoder;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Formats.Png;
+using SixLabors.ImageSharp.Processing;
+using static QRCoder.PayloadGenerator;
+
+namespace SolidarityBookCatalog.Services
 {
     public class ToolService
     {
@@ -48,6 +54,26 @@
                 Console.WriteLine(ex.Message);
             }
             return result;
+        }
+
+        /// <summary>
+        /// 生成带Logo的二维码并转换为Base64字符串
+        /// </summary>
+        /// <param name="content">二维码内容</param>
+        /// <param name="logoPath">logo图片路径</param>
+        /// <param name="height">二维码图片高度，默认240单位pixels</param>
+        /// <param name="width">二维码图片宽度，默认240单位pixels</param>
+        /// <param name="margin">二维码图片边距，默认为0</param>
+        /// <returns>Base64字符串</returns>
+        public static byte[] GenerateQRCodeWithLogo(string url,int size=4)
+        {
+            // 1. 生成二维码基础图像 
+
+            QRCodeGenerator generator = new QRCodeGenerator();
+            QRCodeData codeData = generator.CreateQrCode(url, QRCodeGenerator.ECCLevel.L, true);
+            QRCoder.BitmapByteQRCode qrImage = new QRCoder.BitmapByteQRCode(codeData);
+            PngByteQRCode qrCode = new PngByteQRCode(codeData);
+            return qrCode.GetGraphic(size);
         }
     }
 

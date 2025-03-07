@@ -12,16 +12,25 @@
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.12" />
     <PackageReference Include="MongoDB.Driver" Version="3.0.0" />
     <PackageReference Include="NEST" Version="7.17.5" />
+    <PackageReference Include="QRCoder" Version="1.6.0" />
     <PackageReference Include="Serilog" Version="4.2.0" />
     <PackageReference Include="Serilog.AspNetCore" Version="9.0.0" />
     <PackageReference Include="Serilog.Settings.Configuration" Version="9.0.0" />
     <PackageReference Include="Serilog.Sinks.File" Version="6.0.0" />
     <PackageReference Include="Serilog.Sinks.MongoDB" Version="7.0.0" />
+    <PackageReference Include="SixLabors.ImageSharp" Version="3.1.7" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
+    <PackageReference Include="System.Drawing.Common" Version="9.0.2" />
   </ItemGroup>
 
   <ItemGroup>
     <Folder Include="wwwroot\js\images\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="logleft.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
 </Project>
