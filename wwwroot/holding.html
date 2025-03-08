@@ -161,7 +161,7 @@
     </div>
     <div style="display:flex;margin-top:20px;">
         <div id="libraryTree" style="width:16%;" class="tree"></div>
-        <div id="right"  style="width:80%;"></div>
+        <div id="right" style="width:80%;"></div>
         <script id="holding-template" type="text/x-handlebars-template">
             <div style="display:flex;text-align:center;justify-content:center;" class="holding">
                 <div style="width:0%;visibility:hidden;">id</div>
@@ -172,17 +172,24 @@
                 <div style="width:8%;"><strong>借阅</strong></div>
             </div>
             {{#each this}}
-        <div style="display:flex;" class="holding">
-            <div style="width:0%;overflow:hidden;visibility:hidden;">{{id}}</div>
-            <div style="width: 10%; ">{{identifier}}</div>
-            <div style="width: 10%; ">{{bookRecNo}}</div>
-            <div style="width: 20%; ">{{userName}}</div>
-            <div style="width: 60%; overflow:hidden;">{{barcode}}</div>
-            <div style="width: 8%; ">借阅</div>
-        </div>
+            <div style="display:flex;" class="holding">
+                <div style="width:0%;overflow:hidden;visibility:hidden;">{{id}}</div>
+                <div style="width: 10%; ">{{identifier}}</div>
+                <div style="width: 10%; ">{{bookRecNo}}</div>
+                <div style="width: 20%; ">{{userName}}</div>
+                <div style="width: 60%; overflow:hidden;">{{barcode}}</div>
+                <div style="width: 8%;"><button class="borrow-btn" onclick="showQRCode('{{id}}')">微信借阅</button></div>
+            </div>
             {{/each}}
         </script>
     </div>
+    <!-- 模态框结构 -->
+    <div id="qrModal" style="display:none; position:fixed; left:50%; top:50%; transform:translate(-50%, -50%); padding:20px; background:white; border-radius:5px; box-shadow:0 0 10px rgba(0,0,0,0.5);">
+        <p style="text-align:center;">请用微信扫码<br/></p>
+        <img id="qrImage" src="" alt="二维码" />
+        <p style="text-align:center;"> <button style="align-content:center;" onclick="document.getElementById('qrModal').style.display='none';">关闭</button></p>
+    </div>
+
     <div class="footer">
         <p>版权所有 © 2024 联盟图书馆</p>
     </div>
@@ -229,16 +236,16 @@
 
                 const $rootUl = $('<ul>');
                 $rootUl.append('<div>选择图书馆    <span style="border-radius:10px 10px;background-color:cadetblue;padding:5px 10px 5px 10px;"onclick="clearAll()">清除选择</span></div>');
-               
+
                 data.forEach((province, provinceIndex) => {
                     const $provinceLi = $('<li>');
                     const $provinceNode = $('<div>')
                         .addClass('tree-node')
                         .attr('data-id', province.ProviceId)
                         .html(`
-                                            <span class="tree-icon">▼</span>
-                                            <span>${province.ProvinceName}</span>
-                                        `);
+                                                <span class="tree-icon">▼</span>
+                                                <span>${province.ProvinceName}</span>
+                                            `);
 
                     const $citiesUl = $('<ul>');
 
@@ -248,9 +255,9 @@
                             .addClass('tree-node')
                             .attr('data-id', city.CityId)
                             .html(`
-                                                <span class="tree-icon">▼</span>
-                                                <span>${city.CityName}</span>
-                                            `);
+                                                    <span class="tree-icon">▼</span>
+                                                    <span>${city.CityName}</span>
+                                                `);
 
                         const $librariesUl = $('<ul>');
 
@@ -260,9 +267,9 @@
                                 .addClass('tree-node')
                                 .attr('data-id', library.LibraryId)
                                 .html(`
-                                                    <span class="tree-icon">📚</span>
-                                                    <span>${library.LibraryName}</span>
-                                                `);
+                                                        <span class="tree-icon">📚</span>
+                                                        <span>${library.LibraryName}</span>
+                                                    `);
 
                             $libraryLi.append($libraryNode);
                             $librariesUl.append($libraryLi);
@@ -323,7 +330,7 @@
         });
         //查询馆藏
         function search(identifier, prefix) {
-            
+
             $.ajax({
                 url: './api/Holding/search?identifier=' + gIdentifier + '&prefix=' + gSelected,
                 method: 'GET',
@@ -345,7 +352,12 @@
 
 
         }
-
+        //显示微信扫码借阅
+        function showQRCode(id) {
+            var qrCodeUrl = './api/holding/qrLogo/?url=' + id;
+            document.getElementById('qrImage').src = qrCodeUrl;
+            document.getElementById('qrModal').style.display = 'block';
+        }
     </script>
 </body>
 </html>

@@ -163,10 +163,17 @@ namespace SolidarityBookCatalog.Controllers
                         Console.WriteLine($"https://reader.yangtzeu.edu.cn/wechat/register?openId={openId}");
                         return Redirect($"https://reader.yangtzeu.edu.cn/wechat/register?openId={openId}");
                     }
-                    else     //登录
+                    else     
                     {
-                        Console.WriteLine($"https://reader.yangtzeu.edu.cn/wechat/my?openId={openId}");
-                        return Redirect($"https://reader.yangtzeu.edu.cn/wechat/my?openId={openId}");
+                        if (state.Length == 24)  //借阅
+                        {
+                            return Redirect($"https://reader.yangtzeu.edu.cn/wechat/qrBorrow?openId={openId}&holdingId={state}");
+                        }
+                        else  //登录
+                        {
+                            Console.WriteLine($"https://reader.yangtzeu.edu.cn/wechat/my?openId={openId}");
+                            return Redirect($"https://reader.yangtzeu.edu.cn/wechat/my?openId={openId}");
+                        }
                     }
                 }
                 else   //错误

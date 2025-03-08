@@ -1,7 +1,11 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using QRCoder;
 using SolidarityBookCatalog.Models;
 using SolidarityBookCatalog.Services;
+using System.Drawing;
+using System.Net;
+using static QRCoder.PayloadGenerator;
 
 // For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
 
@@ -61,9 +65,16 @@ namespace SolidarityBookCatalog.Controllers
         [Route("qr")]
         public  IActionResult qr(string url)
         {
-            return File(ToolService.GenerateQRCodeWithLogo(url, 4), "image/jpeg");
+            return File(ToolService.GenerateQRCode(url, 4), "image/png");
         }
-
+        //生成带logo凤凰的二维码，要从GITHUB加载qrcode.cs到本地来扩展
+        [HttpGet]
+        [Route("qrLogo")]
+        public IActionResult qrLogo(string url)
+        {
+            url = $"https://open.weixin.qq.com/connect/oauth2/authorize?appid=wx86605acd8f3d0820&redirect_uri=https://reader.yangtzeu.edu.cn/solidarity/api/wechat/oauth&response_type=code&scope=snsapi_userinfo&state={url}&connect_redirect=1#wechat_redirect";
+            return File(ToolService.GenerateQRCodeWithLogo(url, 4), "image/png");
+        }
 
         /// <summary>
         /// 通过ISBN查询馆藏
