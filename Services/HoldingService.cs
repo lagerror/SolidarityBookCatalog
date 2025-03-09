@@ -1,4 +1,6 @@
-﻿using MongoDB.Driver;
+﻿using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Mvc;
+using MongoDB.Driver;
 using SolidarityBookCatalog.Models;
 using System.Text.RegularExpressions;
 
@@ -7,13 +9,20 @@ namespace SolidarityBookCatalog.Services
     public class HoldingService
     {
         public readonly IMongoCollection<Holding> _holdings;
-
+        public readonly IMongoCollection<Biblios> _biblios;
+        public readonly IMongoCollection<User> _user;
         public HoldingService(IConfiguration config, IMongoClient client)
         {
           
             var database = client.GetDatabase("BookReShare");
             _holdings = database.GetCollection<Holding>("holding");
+           // _biblios = database.GetCollection<Biblios>("biblios");
+           // _user=database.GetCollection<User>("user");
         }
+       
+       
+
+
         public Holding Get(string identifier)
         {
             return _holdings.Find<Holding>(hoding => hoding.Identifier == identifier).FirstOrDefault();

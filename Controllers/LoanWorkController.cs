@@ -51,10 +51,10 @@ namespace SolidarityBookCatalog.Controllers
             switch (act)
             {
                 case "index":// 创建唯一索引
-                    var indexKeysDefinition = Builders<LoanWork>.IndexKeys.Ascending(x => x.Id);
-                    var indexOptions = new CreateIndexOptions { Unique = true }; // 唯一性
-                    var indexModel = new CreateIndexModel<LoanWork>(indexKeysDefinition, indexOptions);
-                    _loanWork.Indexes.CreateOneAsync(indexModel);
+                    //var indexKeysDefinition = Builders<LoanWork>.IndexKeys.Ascending(x => x.Id);
+                    //var indexOptions = new CreateIndexOptions { Unique = true }; // 唯一性
+                    //var indexModel = new CreateIndexModel<LoanWork>(indexKeysDefinition, indexOptions);
+                    //_loanWork.Indexes.CreateOneAsync(indexModel);
                     break;
                 case "getReaderDetail":
                     msg.Data=await _loanWorkService.getReaderDetailAsync(pars);
@@ -82,6 +82,60 @@ namespace SolidarityBookCatalog.Controllers
 
                 return Ok(msg);
         }
+
+
+        //通过读者OPENID，获取读者详细信息，用于借阅申请中
+        [HttpGet]
+        [Route("getReaderDetail")]
+        public async Task<IActionResult> getReaderDetail(string openId)
+        { 
+            Msg msg= new Msg();
+            //校验openId的解密，为查询者的openId
+            var ret = _toolService.DeCryptOpenId(openId);
+            if (!ret.Item1)
+            {
+                msg.Code = 1;
+                msg.Message = $"OpenId解密失败";
+                return Ok(msg);
+            }
+            openId = ret.Item2;
+
+            ReaderDetail readerDetail =await _loanWorkService.getReaderDetailAsync(openId);
+            if (readerDetail == null)
+            {
+                msg.Code = 2;
+                msg.Message = "没有找到对应的读者信息";
+                return Ok(msg);
+            }
+            msg.Code = 0;
+            msg.Message = "getReaderDetail";
+            msg.Data = readerDetail;
+
+            return Ok(msg);
+        
+        }
+
+        //通过图书的id,获取图书详细信息 用于借阅流程中
+        [HttpGet]
+        [Route("getHoldingDetail")]
+        public async Task<IActionResult> getHoldingDetail(string holdingId)
+        {
+            Msg msg = new Msg();
+            HoldingDetail holdingDetail = await _loanWorkService.getHoldingDetailAsync(holdingId);
+            if (holdingDetail == null)
+            {
+                msg.Code = 2;
+                msg.Message = "没有找到对应的读者信息";
+                return Ok(msg);
+            }
+            msg.Code = 0;
+            msg.Message = "getHoldingDetail";
+            msg.Data = holdingDetail;
+
+            return Ok(msg);
+
+        }
+
         //管理人员修改申请的状态，并给出原因，后台发送微信通知
         [HttpPost]
         [Route("status")]
