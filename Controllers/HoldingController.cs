@@ -1,11 +1,9 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using QRCoder;
 using SolidarityBookCatalog.Models;
 using SolidarityBookCatalog.Services;
-using System.Drawing;
-using System.Net;
-using static QRCoder.PayloadGenerator;
+using SolidarityBookCatalog.Models;
 
 // For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
 
@@ -118,9 +116,17 @@ namespace SolidarityBookCatalog.Controllers
             return msg;
         }
 
+
+        /// <summary>
+        /// flag=vant时候，返回层级数据
+        /// </summary>
+        /// <param name="identifier"></param>
+        /// <param name="prefix"></param>
+        /// <param name="flag"></param>
+        /// <returns></returns>
         [HttpGet]
         [Route("search")]
-        public ActionResult<Msg> Search(string identifier,string prefix)
+        public ActionResult<Msg> Search(string identifier,string prefix="all",string flag="common")
         {
             Msg msg = new Msg();
             try
@@ -128,12 +134,17 @@ namespace SolidarityBookCatalog.Controllers
                 var tuple = Biblios.validIsbn(identifier);
                 if (tuple.Item1)
                 {
-                    var holding = _holdingService.search(tuple.Item2,prefix);
+                    List<Holding> holding = _holdingService.search(tuple.Item2,prefix);
                     if (holding != null)
                     {
                         msg.Code = 0;
                         msg.Message = "查询到馆藏";
                         msg.Data = holding;
+                        if (flag == "vant")
+                        {
+                            msg= _holdingService.SearchVant(holding);
+                            return msg;
+                        }
                     }
                     else
                     {

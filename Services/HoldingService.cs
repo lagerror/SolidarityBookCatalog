@@ -16,13 +16,10 @@ namespace SolidarityBookCatalog.Services
           
             var database = client.GetDatabase("BookReShare");
             _holdings = database.GetCollection<Holding>("holding");
-           // _biblios = database.GetCollection<Biblios>("biblios");
-           // _user=database.GetCollection<User>("user");
+            _biblios = database.GetCollection<Biblios>("biblios");
+            _user=database.GetCollection<User>("user");
         }
-       
-       
-
-
+    
         public Holding Get(string identifier)
         {
             return _holdings.Find<Holding>(hoding => hoding.Identifier == identifier).FirstOrDefault();
@@ -69,7 +66,58 @@ namespace SolidarityBookCatalog.Services
             return msg;
         }
 
-        public  List<Holding> search(string identifier, string prefix="all")
+        public Msg SearchVant(List<Holding> holdings)
+        {
+            Msg msg = new Msg();
+            try {
+                List<SolidarityBookCatalog.Models.User> userList = _user.Find(_ => true).ToList();
+                // LINQ查询
+                var query = from holding in holdings
+                            join user in userList on holding.UserName equals user.AppId
+                            select new
+                            {
+                                Province = user.Province,
+                                City = user.City,
+                                Name = user.Name,
+                                Id = holding.Id,
+                                Num = holding.Barcode?.Count
+                            };
+                var result = query
+                 .GroupBy(l => l.Province)
+                     .Select(group => new
+                     {
+                         text = group.Key,
+                         value = group.First().Id,
+                         children = group.GroupBy(l => l.City)
+                             .Select(children => new
+                             {
+                                 text = children.Key ,
+                                 value = children.First().Id,
+                                 children = children.Select(l => new
+                                 {
+                                     text = $"[{l.Num}册]{l.Name}",
+                                     value = l.Id
+                                 })
+                             })
+                     });
+                //获取图书信息
+                var identifier = holdings[0].Identifier;
+                var biblios=_biblios.Find(x=>x.Identifier == identifier).FirstOrDefault();
+                msg.Code = 0;
+                msg.Message = "SearchVant";
+                msg.Data =new { 
+                    biblios=biblios,
+                    holding=result
+                };
+            }catch(Exception ex) {
+                msg.Code = 100;
+                msg.Message= "SearchVant";
+                msg.Data = ex.Message;
+            }
+            return  msg;
+        }
+
+        public   List<Holding> search(string identifier, string prefix="all")
         { 
             List<Holding> list = new List<Holding>();
             //不限定所在图书馆
@@ -89,7 +137,9 @@ namespace SolidarityBookCatalog.Services
                 );
             }
             // 执行查询
-            list =_holdings.Find(filter).ToList();
+            list = _holdings.Find(filter).ToList();
+            //为了在移动端前端做pickup选择，后端生成所需数据
+           
 
             return list;
         }

@@ -348,7 +348,7 @@ namespace SolidarityBookCatalog.Controllers
 
                 // 执行查询
                 var total = await _loanWork.CountDocumentsAsync(finalFilter);
-                var results = await _loanWork.Find(finalFilter)
+                var results = await _loanWork.Find(finalFilter).SortByDescending(x => x.Application.ApplicationTime)
                     .Skip((page - 1) * rows)
                     .Limit(rows)
                     .ToListAsync();
@@ -706,7 +706,7 @@ namespace SolidarityBookCatalog.Controllers
                     return Ok(msg);
                 }
                 //如果流程不对，或者找书人员没有找到书
-                if (apply.LibraryProcessing == null | apply.Status != PublicEnum.CirculationStatus.已申请)
+                if (apply.LibraryProcessing == null | apply.Status != PublicEnum.CirculationStatus.图书已找到)
                 {
                     msg.Code = 10;
                     msg.Message = "流程不对或者没有找到图书";
