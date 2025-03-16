@@ -58,6 +58,9 @@ namespace SolidarityBookCatalog.Models
         //手机号，便于联系
         [BsonElement("mobilePhone")]
         public string? MobilePhone { get; set; }
+        //是否已经实现互借
+        [BsonElement("isInterLend")]
+        public bool IsInterLend { get; set; }=false;
 
     }
     //用户登录model

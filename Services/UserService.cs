@@ -58,7 +58,7 @@ namespace SolidarityBookCatalog.Services
             return flag;
         }
 
-        public Msg GroupLibAdd()
+        public Msg GroupLibAdd(string flag)
         { 
             Msg msg = new Msg();
             // 创建投影，只选择特定的字段
@@ -67,10 +67,18 @@ namespace SolidarityBookCatalog.Services
                                                      .Include(u => u.City)
                                                      .Include(u => u.AppId)
                                                      .Include(u => u.Name);
+            List<User> users;
+            if (flag == "vant")
+            {
+                var filter = Builders<User>.Filter.Eq(x => x.IsInterLend, true);
+                users = _users.Find(filter).Project<User>(projection).ToList();
 
-            // 执行查询并获取结果
-            var users = _users.Find(new BsonDocument()).Project<User>(projection).ToList();
-
+            }
+            else
+            {
+                // 执行查询并获取结果
+                users = _users.Find(new BsonDocument()).Project<User>(projection).ToList();
+            }
             var groupedLibraries = users
            .GroupBy(l => l.Province)
                .Select(group => new

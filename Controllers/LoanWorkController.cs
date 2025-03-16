@@ -452,7 +452,7 @@ namespace SolidarityBookCatalog.Controllers
                 {
                     var loan = new
                     {
-                        keyword1 = new { value = $"{loanWork.Application.ReaderDetail.Library}:{loanWork.Application.ReaderDetail.ReaderNo}：{loanWork.Application.ReaderDetail.Phone}" },
+                        keyword1 = new { value = $"{loanWork.Application.ReaderDetail.Library}:{loanWork.Application.ReaderDetail.ReaderNo}：{loanWork.Application.ReaderDetail.Name}" },
                         keyword2 = new { value = $"{loanWork.HoldingDetail.Title}:{loanWork.HoldingDetail.isbn}:{loanWork.HoldingDetail.Price.ToString()}" },  //书名
                         keyword3 = new { value = $"所在馆记录号：{loanWork.HoldingDetail.BookRecNo}" },   // ISBN
                         keyword4 = new { value = $"{loanWork.Application.ApplicationTime.ToString("yyyy-MM-dd")}" },   //借的时间
@@ -776,7 +776,7 @@ namespace SolidarityBookCatalog.Controllers
                         LibrarianOpenId = transportInfo.CourierOpenId,
                         CourierDetail = transportInfo.CourierDetail,
                         Remark = transportInfo.Remark,
-                        PickupTime = transportInfo.PickupTime
+                        PickupTime = transportInfo.TransportTime
                     };
                 }
                 //发送iot消息，为了减小流量和安全，只保留applyId,详细信息通过search去查
@@ -940,7 +940,7 @@ namespace SolidarityBookCatalog.Controllers
                         LibrarianOpenId = destinationLockerInfo.CourierOpenId,
                         CourierDetail = destinationLockerInfo.CourierDetail,
                         Remark = destinationLockerInfo.Remark,
-                        DepositTime = destinationLockerInfo.DepositTime,
+                        DestinationLockerTime = destinationLockerInfo.DestinationLockerTime,
                         LockerNumber = destinationLockerInfo.LockerNumber,
                         CellNumber = destinationLockerInfo.CellNumber
                     };
@@ -956,13 +956,13 @@ namespace SolidarityBookCatalog.Controllers
                     {
                         var notice = new
                         {
-                            keyword1 = new { value = $"{destinationLockerInfo.LockerDetail.Owner}:{destinationLockerInfo.LockerDetail.Location}" },  //学校
-                            keyword2 = new { value = $"快递员联系方式：{destinationLockerInfo.CourierDetail.name}:{destinationLockerInfo.CourierDetail.phone}" },  //通知人，快递员电话
-                            keyword3 = new { value = $"{destinationLockerInfo.DepositTime?.ToString("yyyy-MM-dd")}" },   // 时间
-                            keyword4 = new { value = $"{destinationLockerInfo.LockerDetail.Area}: {destinationLockerInfo.CellNumber}" },   //取货的地点
+                            keyword1 = new { value = $"{destinationLockerInfo.LockerDetail.Owner}:{destinationLockerInfo.LockerDetail.Area}" },  //学校
+                            keyword2 = new { value = $"所借图书已送达:{apply.HoldingDetail.Title} " },  //通知人，快递员电话
+                            keyword3 = new { value = $"从{apply.HoldingDetail.Library}借于{apply.Application.ApplicationTime.ToString("yyyy-MM-dd")}" },   // 时间
+                            keyword4 = new { value = $"请到{destinationLockerInfo.LockerDetail.Location}:快递柜{destinationLockerInfo.CellNumber}号格取书" },   //取货的地点
 
                         };
-                        await _weChatService.SendTemplateMessageAsync("notice", openId, $"https://reader.yangtzeu.edu.cn/wechat/my?openId={sourceOpenId}", notice);
+                        await _weChatService.SendTemplateMessageAsync("notice", openId, $"https://reader.yangtzeu.edu.cn/wechat/my?openId={HttpUtility.UrlEncode(sourceOpenId)}", notice);
                     }
 
                 }

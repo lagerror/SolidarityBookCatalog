@@ -62,7 +62,7 @@ namespace SolidarityBookCatalog.Models
         public ReaderDetail? ReaderDetail { get; set; }
 
         [BsonElement("applicationTime")]
-        public DateTime ApplicationTime { get; set; } = DateTime.UtcNow;
+        public DateTime ApplicationTime { get; set; } = DateTime.SpecifyKind(DateTime.Now, DateTimeKind.Local);
 
         [BsonElement("sourceLocker")]
         public string SourceLocker { get; set; }
@@ -97,8 +97,8 @@ namespace SolidarityBookCatalog.Models
         [BsonElement("lockerDetail")]
         public Locker? LockerDetail { get; set; }
 
-        [BsonElement("depositTime")]
-        public DateTime? DepositTime { get; set; }= DateTime.UtcNow;
+        [BsonElement("libraryProcessingTime")]
+        public DateTime? LibraryProcessingTime { get; set; }= DateTime.SpecifyKind(DateTime.Now, DateTimeKind.Local);
 
         [BsonElement("remark")]
         public string? Remark { get; set; }
@@ -113,8 +113,8 @@ namespace SolidarityBookCatalog.Models
         [BsonElement("courierDetail")]
         public dynamic? CourierDetail { get; set; }
 
-        [BsonElement("pickupTime")]
-        public DateTime? PickupTime { get; set; } = DateTime.UtcNow;
+        [BsonElement("transportTime")]
+        public DateTime? TransportTime { get; set; } = DateTime.SpecifyKind(DateTime.Now, DateTimeKind.Local);
 
         [BsonElement("remark")]
         public string Remark { get; set; }
@@ -139,8 +139,8 @@ namespace SolidarityBookCatalog.Models
         [BsonElement("lockerDetail")]
         public Locker? LockerDetail { get; set; }
 
-        [BsonElement("depositTime")]
-        public DateTime? DepositTime { get; set; } = DateTime.UtcNow;
+        [BsonElement("destinationLockerTime")]
+        public DateTime? DestinationLockerTime { get; set; } = DateTime.SpecifyKind(DateTime.Now, DateTimeKind.Local);
 
         [BsonElement("remark")]
         public string? Remark { get; set; }
@@ -162,7 +162,7 @@ namespace SolidarityBookCatalog.Models
         public string CellNumber { get; set; }
 
         [BsonElement("pickupTime")]
-        public DateTime? PickupTime { get; set; }
+        public DateTime? PickupTime { get; set; } = DateTime.SpecifyKind(DateTime.Now, DateTimeKind.Local);
 
         [BsonElement("remark")]
         public string Remark { get; set; }

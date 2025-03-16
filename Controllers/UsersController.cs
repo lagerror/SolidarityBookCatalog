@@ -82,11 +82,15 @@ namespace SolidarityBookCatalog.Controllers
             return Ok(msg);
         }
 
-
+        /// <summary>
+        /// 就会挑选加入了互借协议的图书馆
+        /// </summary>
+        /// <param name="flag">vant</param>
+        /// <returns></returns>
         [HttpGet]
-        public Msg  Get()
+        public Msg  Get(string flag="common")
         {
-            Msg msg= _userService.GroupLibAdd();
+            Msg msg= _userService.GroupLibAdd(flag);
             return msg;
         }
         [HttpPost]
