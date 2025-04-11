@@ -200,7 +200,7 @@ namespace SolidarityBookCatalog.Controllers
 
         [HttpPost]
         [Route("search")]
-        public async Task<IActionResult> search(SearchQueryList list, string openId = "rfWTm26wJZnpQ+S0JgywkZPQUU59YMTdoGVAEzPnfC2epRw1ZuI8EqIjbGPV8by9",int rows=10,int page=1)
+        public async Task<IActionResult> search(SearchQueryList list, string openId= "rfWTm26wJZnpQ+S0JgywkZPQUU59YMTdoGVAEzPnfC2epRw1ZuI8EqIjbGPV8by9", int rows=10,int page=1)
         {
             Msg msg = new Msg();
             //校验openId的解密，为查询者的openId
@@ -379,7 +379,7 @@ namespace SolidarityBookCatalog.Controllers
         /// <returns></returns>
         [HttpPost]
         [Route("apply")]
-        public  async Task<IActionResult> apply (string readerOpenId= "rfWTm26wJZnpQ+S0JgywkZPQUU59YMTdoGVAEzPnfC2epRw1ZuI8EqIjbGPV8by9", string holdingId = "675805eff80692346fa8abe9", string destinationLocker = "898608341523D0678886")
+        public  async Task<IActionResult> apply (string readerOpenId, string holdingId, string destinationLocker)
         {
             Msg msg = new Msg();
             string applyId=null;
@@ -491,7 +491,7 @@ namespace SolidarityBookCatalog.Controllers
         /// <returns></returns>
         [HttpPost]
         [Route("libraryProcess")]
-        public async Task<IActionResult> libraryProcess(string applyId= "67c30b1bf80110a819c18fce", string openId = "rfWTm26wJZnpQ+S0JgywkZPQUU59YMTdoGVAEzPnfC2epRw1ZuI8EqIjbGPV8by9", string iccid = "898608341523D0678886")
+        public async Task<IActionResult> libraryProcess(string applyId, string openId, string iccid)
         {
             Msg msg = new Msg();
             //校验openId的解密
@@ -577,7 +577,7 @@ namespace SolidarityBookCatalog.Controllers
                         libraryProcessingInfo.LockerNumber = iccid;   //柜子
                         libraryProcessingInfo.CellNumber = msgTemp.Message.Split('|')[1];   //格口
                         apply.Status = PublicEnum.CirculationStatus.图书已找到;    //状态
-                        var temp = JsonSerializer.Deserialize<Locker>(msgTemp.Data.ToString(), options);
+                        var temp = JsonSerializer.Deserialize<Locker>(msgTemp.Data?.ToString(), options);
                         libraryProcessingInfo.LockerDetail = temp;
                     }
                     else
@@ -653,7 +653,7 @@ namespace SolidarityBookCatalog.Controllers
         /// <returns></returns>
         [HttpPost]
         [Route("transport")]
-        public async Task<IActionResult> transport(string applyId = "67c30b1bf80110a819c18fce", string openId = "rfWTm26wJZnpQ+S0JgywkZPQUU59YMTdoGVAEzPnfC2epRw1ZuI8EqIjbGPV8by9", string remark="快递员从快递柜取书成功")
+        public async Task<IActionResult> transport(string applyId , string openId, string remark="快递员从快递柜取书成功")
         {
             Msg msg = new Msg();
             //一try到底不好
@@ -716,7 +716,7 @@ namespace SolidarityBookCatalog.Controllers
                 TransportInfo transportInfo = new TransportInfo();
 
                 //打开指定柜门
-                string url = _baseUrl + $"/api/Locker/OpenCell?iccid={apply.LibraryProcessing.LockerNumber}&id={apply.LibraryProcessing.CellNumber}";
+                string url = _baseUrl + $"/api/Locker/OpenCell?iccid={apply.LibraryProcessing.LockerNumber}&id={apply.LibraryProcessing.CellNumber}&flag=false";
                 HttpResponseMessage response = await _httpClient.GetAsync(url);
                 // 确保HTTP响应状态为200 (OK)
                 if (response.IsSuccessStatusCode)
@@ -806,7 +806,7 @@ namespace SolidarityBookCatalog.Controllers
         /// <returns></returns>
         [HttpPost]
         [Route("DestinationLocker")]
-        public async Task<IActionResult> DestinationLocker(string applyId = "67c30b1bf80110a819c18fce", string openId = "rfWTm26wJZnpQ+S0JgywkZPQUU59YMTdoGVAEzPnfC2epRw1ZuI8EqIjbGPV8by9", string remark = "快递员存入快递柜成功")
+        public async Task<IActionResult> DestinationLocker(string applyId, string openId, string remark = "快递员存入快递柜成功")
         {
             Msg msg = new Msg();
             try
@@ -993,7 +993,7 @@ namespace SolidarityBookCatalog.Controllers
         /// <returns></returns>
         [HttpPost]
         [Route("Pickup")]
-        public async Task<IActionResult> Pickup(string applyId = "67c30b1bf80110a819c18fce", string openId = "rfWTm26wJZnpQ+S0JgywkZPQUU59YMTdoGVAEzPnfC2epRw1ZuI8EqIjbGPV8by9", string remark = "读者取书成功")
+        public async Task<IActionResult> Pickup(string applyId, string openId , string remark = "读者取书成功")
         {
             Msg msg = new Msg();
             //校验openId的解密
@@ -1056,7 +1056,7 @@ namespace SolidarityBookCatalog.Controllers
                 PickupInfo pickupInfo = new PickupInfo();
 
                 //打开指定格口
-                string url = _baseUrl + $"/api/Locker/OpenCell?iccid={apply.LibraryProcessing.LockerNumber}&id={apply.LibraryProcessing.CellNumber}";
+                string url = _baseUrl + $"/api/Locker/OpenCell?iccid={apply.DestinationLocker?.LockerNumber}&id={apply.DestinationLocker?.CellNumber}&flag=false";
 
                 HttpResponseMessage response = await _httpClient.GetAsync(url);
                 // 确保HTTP响应状态为200 (OK)

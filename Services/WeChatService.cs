@@ -97,6 +97,7 @@ namespace SolidarityBookCatalog.Services
                 StringContent content = new StringContent(JsonSerializer.Serialize(messageData), Encoding.UTF8, "application/json");
                 HttpResponseMessage response = await sendClient.PostAsync(url, content);
                 string responseContent = await response.Content.ReadAsStringAsync();
+                Console.WriteLine($"发送微信消息返回值：{openid}：{responseContent}");
                 return response.IsSuccessStatusCode;
             }
         }
