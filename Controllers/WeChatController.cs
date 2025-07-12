@@ -1,6 +1,9 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Elastic.Clients.Elasticsearch.Requests;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Caching.Memory;
 using MongoDB.Driver;
 using SolidarityBookCatalog.Models;
+using SolidarityBookCatalog.Models.CDLModels;
 using SolidarityBookCatalog.Services;
 using System.Web;
 
@@ -16,14 +19,17 @@ namespace SolidarityBookCatalog.Controllers
         private ToolService _toolService;
         IConfiguration _configuration;
         IWeChatService _weChatService;
+        IMemoryCache _memoryCache;
 
-        public WeChatController(IConfiguration configuration,IWeChatService weChatService,ToolService toolService, IMongoClient mongoClient)
+        public WeChatController(IMemoryCache memoryCache, IConfiguration configuration,IWeChatService weChatService,ToolService toolService, IMongoClient mongoClient)
         {
             var database = mongoClient.GetDatabase("BookReShare");
             _readers = database.GetCollection<Reader>("reader");
             _configuration = configuration;
             _weChatService = weChatService;
             _toolService = toolService;
+            _memoryCache = memoryCache;
+            
         }
         [HttpGet]
         public string Get(string echoStr, string signature, string timestamp, string nonce)
@@ -167,8 +173,21 @@ namespace SolidarityBookCatalog.Controllers
                     {
                         if (state.Length == 24)  //借阅
                         {
+                            //如果是微信扫码登录
+                            if (state.IndexOf("WxLogin_") == 0)
+                            {
+                                if (!_memoryCache.TryGetValue(state, out LoginState? loginState) || loginState == null)
+                                {
+                                    return BadRequest("二维码已过期");
+                                }
+
+                                loginState.Status = "confirmed";
+                                loginState.UserInfo =string.Format("{\"nickname\":\"微信用户\",\"avatar\":\"https://example.com/avatar.png\"}",reader.Name);
+                                return Redirect($"https://reader.yangtzeu.edu.cn/wechat/my?openId={openId}");
+                            }
                             return Redirect($"https://reader.yangtzeu.edu.cn/wechat/qrBorrow?openId={openId}&holdingId={state}");
                         }
+                       
                         else  //登录
                         {
                             Console.WriteLine($"https://reader.yangtzeu.edu.cn/wechat/my?openId={openId}");

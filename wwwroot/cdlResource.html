@@ -1,0 +1,369 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>图书阅读器</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        body {
+            font-family: 'Microsoft YaHei', sans-serif;
+            background: #f5f5f5;
+            height: 100vh;
+            overflow: hidden;
+            position: relative;
+        }
+
+        #reader-container {
+            width: 100%;
+            height: 100%;
+            background: #222;
+            position: relative;
+            overflow: hidden;
+        }
+
+        #book-image-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #000;
+        }
+
+        #book-image {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+        }
+
+        #prev-area, #next-area {
+            position: absolute;
+            top: 0;
+            height: 100%;
+            width: 30%;
+            z-index: 10;
+            cursor: pointer;
+        }
+
+        #prev-area {
+            left: 0;
+        }
+
+        #next-area {
+            right: 0;
+        }
+
+        #top-bar {
+            position: absolute;
+            top: -60px;
+            left: 0;
+            width: 100%;
+            height: 60px;
+            background: rgba(0,0,0,0.85);
+            color: white;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 20px;
+            z-index: 100;
+            transition: top 0.3s ease;
+        }
+
+            #top-bar.show {
+                top: 0;
+            }
+
+        #bottom-bar {
+            position: absolute;
+            bottom: -80px;
+            left: 0;
+            width: 100%;
+            height: 80px;
+            background: rgba(0,0,0,0.85);
+            color: white;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            transition: bottom 0.3s ease;
+        }
+
+            #bottom-bar.show {
+                bottom: 0;
+            }
+
+        .control-btn {
+            background: #444;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin: 0 5px;
+            transition: background 0.2s;
+        }
+
+            .control-btn:hover {
+                background: #555;
+            }
+
+        #back-btn {
+            background: #e74c3c;
+        }
+
+        #logout-btn {
+            background: #3498db;
+        }
+
+        #book-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin: 0 20px;
+        }
+
+        #due-date {
+            color: #f39c12;
+            font-size: 14px;
+        }
+
+        #user-info {
+            display: flex;
+            align-items: center;
+        }
+
+        #username {
+            color: #2ecc71;
+            font-weight: bold;
+        }
+
+        #page-controls {
+            display: flex;
+            align-items: center;
+            margin-top: 10px;
+        }
+
+        #page-slider {
+            width: 300px;
+            margin: 0 15px;
+        }
+
+        #current-page {
+            font-size: 18px;
+            font-weight: bold;
+            min-width: 40px;
+            text-align: center;
+        }
+
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 24px;
+        }
+
+        .page-hint {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 14px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="reader-container">
+        <div id="top-bar">
+            <div>
+                <button id="back-btn" class="control-btn">返回书架</button>
+            </div>
+            <div>
+                <span id="book-title">JavaScript高级程序设计</span>
+                <span id="due-date">借阅截止: 2025-12-31</span>
+            </div>
+            <div id="user-info">
+                <span id="username">张三</span>
+                <button id="logout-btn" class="control-btn">退出登录</button>
+            </div>
+        </div>
+
+        <div id="book-image-container">
+            <div id="prev-area"></div>
+            <img style="background-color:white;" id="book-image" src="" alt="图书内容">
+            <div id="next-area"></div>
+            <div id="prev-hint" class="page-hint">上一页</div>
+            <div id="next-hint" class="page-hint">下一页</div>
+        </div>
+
+        <div id="bottom-bar">
+            <div id="page-controls">
+                <button id="prev-page" class="control-btn">上一页</button>
+                <span id="current-page">1</span>
+                <span>/</span>
+                <span id="total-pages">100</span>
+                <input type="range" id="page-slider" min="1" max="100" value="1">
+                <button id="next-page" class="control-btn">下一页</button>
+            </div>
+        </div>
+
+        <div id="loading" class="loading">加载中...</div>
+    </div>
+
+    <script>
+        $(document).ready(function() {
+            // 模拟从URL获取OPENID
+            const openid = getOpenIdFromUrl();
+
+            // 初始状态
+            let currentPage = 1;
+            let totalPages = 100;
+            let toolbarVisible = false;
+            let bookData = null;
+
+            // 显示/隐藏工具栏
+            $("#book-image-container").click(function(e) {
+                if ($(e.target).is("#prev-area") || $(e.target).is("#next-area")) {
+                    return;
+                }
+
+                toolbarVisible = !toolbarVisible;
+                $("#top-bar").toggleClass("show", toolbarVisible);
+                $("#bottom-bar").toggleClass("show", toolbarVisible);
+            });
+
+            // 翻页功能
+            $("#prev-area, #prev-page").click(function() {
+                if (currentPage > 1) {
+                    currentPage--;
+                    updatePage();
+                }
+            });
+
+            $("#next-area, #next-page").click(function() {
+                if (currentPage < totalPages) {
+                    currentPage++;
+                    updatePage();
+                }
+            });
+
+            // 滑动条翻页
+            $("#page-slider").on("input", function() {
+                currentPage = parseInt($(this).val());
+                $("#current-page").text(currentPage);
+            });
+
+            $("#page-slider").on("change", function() {
+                updatePage();
+            });
+
+            // 返回按钮
+            $("#back-btn").click(function () {
+                location.reload(true);
+                alert("返回书架");
+            });
+
+            // 退出登录
+            $("#logout-btn").click(function() {
+                alert("退出登录成功");
+                $("#username").text("未登录");
+                window.location.href = "./cdlLogin.html";
+            });
+
+            // 显示翻页提示
+            $("#prev-area").hover(
+                function() {
+                    $("#prev-hint").show();
+                },
+                function() {
+                    $("#prev-hint").hide();
+                }
+            );
+
+            $("#next-area").hover(
+                function() {
+                    $("#next-hint").show();
+                },
+                function() {
+                    $("#next-hint").hide();
+                }
+            );
+
+            // 模拟AJAX加载图书数据
+            $("#loading").show();
+            setTimeout(function() {
+                loadBookData(openid);
+            }, 1500);
+
+            // 加载图书数据
+            function loadBookData(openid) {
+                // 模拟AJAX请求
+                $.ajax({
+                    url: "./api/WeChatLogin",
+                    type: "GET",
+                    data: { openid: openid },
+                    success: function(data) {
+                        bookData = data;
+                        $("#book-title").text(data.bookName);
+                        $("#due-date").text("借阅截止: " + data.dueDate);
+                        $("#username").text(data.userName);
+                        currentPage =  1;
+                        totalPages = data.totalPages || 100;
+
+                        $("#total-pages").text(totalPages);
+                        $("#page-slider").attr("max", totalPages);
+                        $("#current-page").text(currentPage);
+                        $("#page-slider").val(currentPage);
+
+                        // 更新图书图片
+                        $("#book-image").attr("src", `https://reader.yangtzeu.edu.cn/subject/png/1/2/1/73872/${currentPage}.png`);
+
+                        $("#loading").hide();
+                    },
+                    error: function() {
+                        alert("加载图书数据失败");
+                        $("#loading").text("加载失败，请重试");
+                    }
+                });
+            }
+
+            // 更新页面内容
+            function updatePage() {
+                $("#current-page").text(currentPage);
+                $("#page-slider").val(currentPage);
+                $("#book-image").attr("src", `https://reader.yangtzeu.edu.cn/subject/png/1/2/1/73872/${currentPage}.png`);
+                // 模拟加载新页面
+                //$("#book-image").css("opacity", "0.3");
+                //setTimeout(function() {
+               //     $("#book-image").attr("src", `https://reader.yangtzeu.edu.cn/subject/png/1/2/1/73872/${currentPage}.png`);
+                //    $("#book-image").css("opacity", "1");
+               // }, 300);
+            }
+
+            // 模拟从URL获取OPENID
+            function getOpenIdFromUrl() {
+                // 实际项目中应该从URL参数获取
+                return "OPENID1234567890";
+            }
+        });
+    </script>
+</body>
+</html>

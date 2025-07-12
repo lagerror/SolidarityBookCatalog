@@ -1,0 +1,421 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>微信扫码登录</title>
+    <script src="./js/jquery-1.8.0.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #e4edf5 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            display: flex;
+            max-width: 900px;
+            width: 100%;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .left-panel {
+            flex: 1;
+            background: linear-gradient(135deg, #07c160 0%, #05a84e 100%);
+            color: white;
+            padding: 40px 20px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .logo-icon {
+            font-size: 42px;
+            margin-right: 15px;
+        }
+
+        .logo-text {
+            font-size: 28px;
+            font-weight: 600;
+        }
+
+        .features {
+            list-style: none;
+            margin-top: 30px;
+        }
+
+            .features li {
+                display: flex;
+                align-items: center;
+                margin-bottom: 20px;
+                font-size: 16px;
+                line-height: 1.6;
+            }
+
+            .features i {
+                margin-right: 12px;
+                font-size: 20px;
+                color: rgba(255, 255, 255, 0.9);
+            }
+
+        .right-panel {
+            flex: 1;
+            padding: 50px 40px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .title {
+            font-size: 28px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        .subtitle {
+            color: #777;
+            margin-bottom: 40px;
+            text-align: center;
+            font-size: 16px;
+        }
+
+        .qrcode-container {
+            position: relative;
+            width: 220px;
+            height: 220px;
+            margin: 0 auto 30px;
+            border: 1px solid #eee;
+            border-radius: 8px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+        }
+
+        .qrcode-placeholder {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: #f9f9f9;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+
+            .qrcode-placeholder i {
+                font-size: 50px;
+                color: #ddd;
+                margin-bottom: 15px;
+            }
+
+            .qrcode-placeholder span {
+                color: #aaa;
+                font-size: 14px;
+            }
+
+        .qrcode-img {
+            width: 200px;
+            height: 200px;
+            display: none;
+        }
+
+        .wechat-icon {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 40px;
+            height: 40px;
+            background: white;
+            border-radius: 6px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+        }
+
+            .wechat-icon i {
+                color: #07c160;
+                font-size: 28px;
+            }
+
+        .status-text {
+            text-align: center;
+            margin: 15px 0 30px;
+            font-size: 14px;
+            color: #666;
+            height: 20px;
+        }
+
+        .btn {
+            background: #07c160;
+            color: white;
+            border: none;
+            border-radius: 30px;
+            padding: 12px 28px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+            .btn:hover {
+                background: #06ad54;
+                transform: translateY(-2px);
+                box-shadow: 0 5px 15px rgba(7, 193, 96, 0.3);
+            }
+
+            .btn i {
+                margin-right: 8px;
+            }
+
+        .btn-refresh {
+            background: #f0f0f0;
+            color: #666;
+        }
+
+            .btn-refresh:hover {
+                background: #e5e5e5;
+                box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+            }
+
+        .footer {
+            margin-top: 30px;
+            color: #999;
+            font-size: 13px;
+            text-align: center;
+            line-height: 1.6;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(7, 193, 96, 0.3);
+            border-radius: 50%;
+            border-top-color: #07c160;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .success {
+            color: #07c160;
+        }
+
+        .expired {
+            color: #f44336;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+            }
+
+            .left-panel {
+                padding: 40px;
+            }
+
+            .right-panel {
+                padding: 40px 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="left-panel">
+            <div>
+                <div style="height: 120px; width: 120px; border-radius: 50%; background-color: white; overflow: hidden; display: flex; align-items: center; justify-content: center; ">
+                <img style="width:90px;" src="jpg/logleft.png" />
+                </div>
+                <br/>
+                <div style="text-align:center;font-size:32px; align-content:center;align-items:center;">联盟图书可控数字借阅</div>
+                <div style="text-align:center;font-size:24px;">共建 共享 共读<br /><br /></div>
+            </div>
+                        
+            <ul class="features">
+                <li>
+                    <img style="width:24px;height:24px; margin-left:20px; margin-right:10px;" src="./jpg/微信群.png" />
+                    <span>请先在联盟平台注册并加入服务群</span>
+                </li>
+                <li>
+                    <img style="width: 24px; height: 24px; margin-left: 20px; margin-right: 10px;" src="./jpg/爱护公物.png" />
+                    <span>请爱护墨水屏阅读设备，及时归还</span>
+                </li>
+                <li>
+                    <img style="width: 24px; height: 24px; margin-left: 20px; margin-right: 10px;" src="./jpg/付费.png" />
+                    <span>珍惜每次阅读，图书馆须向版权方付费</span>
+                </li>
+                <li>
+                    <img style="width: 24px; height: 24px; margin-left: 20px; margin-right: 10px;" src="./jpg/版权.png" />
+                    <span>尊重版权，请勿脱离平台非法传播</span>
+                </li>
+            </ul>
+            <div style="display: flex; justify-content: flex-end;">
+                <div style="height: 120px; width: 120px; border-radius: 50%; background-color: white; overflow: hidden; display: flex; align-items: center; justify-content: center; ">
+                    <img style="width:90px;" src="jpg/logright.png" />
+                </div>
+            </div>
+        </div>
+
+        <div class="right-panel">
+            <h1 class="title">微信扫码登录</h1>
+            <p class="subtitle">请使用微信扫描二维码以登录</p>
+
+            <div class="qrcode-container">
+                <div class="qrcode-placeholder">
+                    <i class="fas fa-qrcode"></i>
+                    <span>二维码加载中...</span>
+                </div>
+                <img id="qrcode" class="qrcode-img" src="" alt="微信登录二维码">
+                <div class="wechat-icon">
+                    <i class="fab fa-weixin"></i>
+                </div>
+            </div>
+
+            <div class="status-text" id="status">准备生成二维码...</div>
+
+            <button id="refreshBtn" class="btn btn-refresh">
+                <i class="fas fa-sync-alt"></i> 刷新二维码
+            </button>
+
+            <div class="footer">
+                <p>请使用最新版微信扫描二维码</p>
+                <p>二维码每60秒自动刷新一次</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        $(document).ready(function () {
+            const apiBaseUrl = './api/WeChatLogin';
+            let qrTimer = null;
+            let checkTimer = null;
+            let currentTicket = null;
+
+            // 生成二维码函数
+            function generateQRCode() {
+                clearTimers();
+
+                $("#status").html('<div class="loading"></div>正在生成二维码...');
+                $(".qrcode-placeholder").show();
+                $("#qrcode").hide();
+
+                // 调用后端API获取二维码
+                $.get(`${apiBaseUrl}/wxLogin`, function (response) {
+                    currentTicket = response.ticket;
+
+                    $(".qrcode-placeholder").hide();
+                    $("#qrcode").attr("src", response.qrCodeImage).show();
+
+                    $("#status").text("请使用微信扫一扫二维码");
+
+                    // 设置二维码过期时间
+                    const expireTime = new Date(response.expireTime).getTime();
+                    qrTimer = setTimeout(function () {
+                        $("#status").addClass("expired").text("二维码已过期，请刷新");
+                    }, expireTime - Date.now());
+
+                    // 开始轮询登录状态
+                    checkLoginStatus();
+                }).fail(function () {
+                    $("#status").addClass("expired").text("二维码生成失败，请重试");
+                });
+            }
+
+            // 检查登录状态
+            function checkLoginStatus() {
+                checkTimer = setInterval(function () {
+                    if (!currentTicket) return;
+
+                    $.get(`${apiBaseUrl}/check/${currentTicket}`, function (response) {
+                        switch (response.status) {
+                            case 'waiting':
+                                // 保持当前状态
+                                break;
+                            case 'scanned':
+                                $("#status").html('<div class="loading"></div>扫描成功，请在手机上确认登录');
+                                break;
+                            case 'confirmed':
+                                clearTimers();
+                                $("#status").addClass("success").html('<i class="fas fa-check-circle"></i> 登录成功，正在跳转...');
+
+                                // 处理用户信息
+                                const userInfo = JSON.parse(response.userInfo);
+                                setTimeout(function () {
+                                    alert(`欢迎 ${userInfo.nickname}! 登录成功`);
+                                    generateQRCode();
+                                }, 1500);
+                                location.href = "./cdlResource.html";
+                                break;
+                            case 'expired':
+                                clearTimers();
+                                $("#status").addClass("expired").text("二维码已过期，请刷新");
+                                break;
+                        }
+                    });
+                }, 2000);
+            }
+
+            // 清除所有定时器
+            function clearTimers() {
+                clearTimeout(qrTimer);
+                clearInterval(checkTimer);
+                $("#status").removeClass("expired success");
+            }
+
+            // 初始化生成二维码
+            generateQRCode();
+
+            // 刷新按钮事件
+            $("#refreshBtn").click(generateQRCode);
+
+            // 模拟手机扫码 (测试用)
+            $("#simulateScan").click(function () {
+                if (!currentTicket) return;
+                $.post(`${apiBaseUrl}/scan`, { ticket: currentTicket });
+            });
+
+            // 模拟手机确认 (测试用)
+            $("#simulateConfirm").click(function () {
+                if (!currentTicket) return;
+                $.post(`${apiBaseUrl}/confirm`, { ticket: currentTicket });
+            });
+        });
+    </script>
+</body>
+</html>
