@@ -176,13 +176,23 @@ namespace SolidarityBookCatalog.Controllers
                             //如果是微信扫码登录
                             if (state.IndexOf("WxLogin_") == 0)
                             {
+                                //state为设置的ticker,通过ticker取出登录信息
                                 if (!_memoryCache.TryGetValue(state, out LoginState? loginState) || loginState == null)
                                 {
                                     return BadRequest("二维码已过期");
                                 }
-
+                                Console.WriteLine("微信登录的state" +loginState.Status);
+                                //重置登录内存变量，并代入用户信息
+                                
+                                reader.OpenId = openId;
+                                reader.Password = "";
+                                reader.Phone = "";
+                                reader.Id = "";
+                                loginState.UserInfo =reader;
+                                _memoryCache.Set(state, loginState,TimeSpan.FromSeconds(60));
                                 loginState.Status = "confirmed";
-                                loginState.UserInfo =string.Format("{\"nickname\":\"微信用户\",\"avatar\":\"https://example.com/avatar.png\"}",reader.Name);
+                                loginState.ScannedAt = DateTime.Now;
+                                                              
                                 return Redirect($"https://reader.yangtzeu.edu.cn/wechat/my?openId={openId}");
                             }
                             return Redirect($"https://reader.yangtzeu.edu.cn/wechat/qrBorrow?openId={openId}&holdingId={state}");
@@ -208,6 +218,7 @@ namespace SolidarityBookCatalog.Controllers
             }
             catch (Exception ex)
             {
+                Console.WriteLine(ex.StackTrace);
                 return Redirect($"https://reader.yangtzeu.edu.cn/wechat/error?openId={ex.Message}");
             }
         }

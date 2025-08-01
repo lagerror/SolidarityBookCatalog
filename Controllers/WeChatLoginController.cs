@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Memory;
 using QRCoder;
+using Serilog;
 using SolidarityBookCatalog.Models.CDLModels;
 using SolidarityBookCatalog.Services;
 using System.Security.Cryptography;
@@ -94,13 +95,12 @@ namespace SolidarityBookCatalog.Controllers
             }
 
             // 模拟用户确认延迟
-            if (state.Status == "scanned" &&
+            if (state.Status == "confirmed" &&
                 DateTime.UtcNow > state.ScannedAt!.Value.AddSeconds(5))
             {
-                state.Status = "confirmed";
-                state.UserInfo = "{\"nickname\":\"微信用户\",\"avatar\":\"https://example.com/avatar.png\"}";
+               
             }
-
+            
             return Ok(new LoginStatusResponse
             {
                 Status = state.Status,
@@ -139,8 +139,7 @@ namespace SolidarityBookCatalog.Controllers
             }
 
             state.Status = "confirmed";
-            state.UserInfo = "{\"nickname\":\"微信用户\",\"avatar\":\"https://example.com/avatar.png\"}";
-
+           
             _logger.LogInformation($"用户已确认登录: {request.Ticket}");
 
             return Ok();

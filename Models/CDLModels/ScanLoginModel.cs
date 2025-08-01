@@ -14,7 +14,7 @@
     public class LoginStatusResponse
     {
         public string Status { get; set; } = string.Empty; // waiting, scanned, confirmed, expired
-        public string? UserInfo { get; set; }
+        public Reader? UserInfo { get; set; }
     }
 
     public class ScanRequest
@@ -28,7 +28,7 @@
         public string Status { get; set; } = "waiting"; // waiting, scanned, confirmed, expired
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime? ScannedAt { get; set; }
-        public string? UserInfo { get; set; }
+        public Reader? UserInfo { get; set; }
     }
     //通过openid返回读者数字借阅图书
     public class CdlReaderLending
