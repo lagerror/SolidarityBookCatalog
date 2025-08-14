@@ -13,6 +13,11 @@ namespace SolidarityBookCatalog.Services
             var database = client.GetDatabase("BookReShare");
             _readers = database.GetCollection<Reader>("reader");
         }
+        public async Task<Reader> SearchByOpenId(string openId)
+        { 
+            Reader reader=await _readers.Find(r=>r.OpenId==openId).FirstOrDefaultAsync();
+            return reader;
+        }
 
         public async Task<Msg> SearchAsync(SearchQueryList list, int rows = 10, int page = 1)
         {

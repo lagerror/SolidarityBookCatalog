@@ -80,6 +80,7 @@ builder.Services.AddSingleton<HoldingService>();
 builder.Services.AddSingleton<UserService>();
 builder.Services.AddSingleton<ReaderService>();
 builder.Services.AddSingleton<LoanWorkService>();
+builder.Services.AddSingleton<IsdlLoanService>();
 builder.Services.AddSingleton<ToolService>();
 
 

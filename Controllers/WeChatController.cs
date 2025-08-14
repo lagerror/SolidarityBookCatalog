@@ -181,21 +181,28 @@ namespace SolidarityBookCatalog.Controllers
                                 {
                                     return BadRequest("二维码已过期");
                                 }
-                                Console.WriteLine("微信登录的state" +loginState.Status);
+                                Console.WriteLine("微信登录的state" + loginState.Status);
                                 //重置登录内存变量，并代入用户信息
-                                
+
                                 reader.OpenId = openId;
                                 reader.Password = "";
                                 reader.Phone = "";
                                 reader.Id = "";
-                                loginState.UserInfo =reader;
-                                _memoryCache.Set(state, loginState,TimeSpan.FromSeconds(60));
+                                loginState.UserInfo = reader;
+                                _memoryCache.Set(state, loginState, TimeSpan.FromSeconds(60));
                                 loginState.Status = "confirmed";
                                 loginState.ScannedAt = DateTime.Now;
-                                                              
+
                                 return Redirect($"https://reader.yangtzeu.edu.cn/wechat/my?openId={openId}");
                             }
-                            return Redirect($"https://reader.yangtzeu.edu.cn/wechat/qrBorrow?openId={openId}&holdingId={state}");
+                            else if (state.IndexOf("wxDigitLoan") == 0)
+                            {
+                                string isbn = state.Substring(11);
+                                string url = $"https://reader.yangtzeu.edu.cn/solidarity/api/Isdl/apply?readerOpenId={openId}&isbn={isbn}";
+                                Console.WriteLine(url);
+                                return Redirect(url);
+                            }
+                                return Redirect($"https://reader.yangtzeu.edu.cn/wechat/qrBorrow?openId={openId}&holdingId={state}");
                         }
                        
                         else  //登录

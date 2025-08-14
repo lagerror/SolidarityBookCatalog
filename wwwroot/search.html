@@ -183,6 +183,8 @@
                     <div class="book">
                         <div style="display: flex; justify-content: space-between; align-items: center; width:100%; height:32px; line-height:28px; color:#0a4c8a; border:solid 2px grey; border-radius:10px; font-size:16px; padding: 0 5px;">
                             <div style="text-align: left;"><strong>题名：</strong>{{title}}；<strong>作者:</strong> {{creator}}</div>
+                            <span style="margin-left: auto;background-color:cadetblue;color:white;margin:5px;border-radius:5px;padding:0 15px 0 15px;" onclick="showQRCode({{ identifier }})">申请安全数字借阅</span>
+
                             <span style="margin-left: auto;background-color:cadetblue;color:white;margin:5px;border-radius:5px;padding:0 15px 0 15px;" onclick="openOrFocusPage({{identifier}})">点击查询所在图书馆</span>
                         </div>
                         <div style="padding: 10px; margin-bottom:20px;">
@@ -209,6 +211,12 @@
                 <div id="next-page" onclick="nextPage()" style="margin-right:30px;border-radius:20px;color:white;background-color:cadetblue;text-align:center;width:120px;">下一页</div>
             </div>
         </div>
+    </div>
+    <!-- 模态框结构 -->
+    <div id="qrModal" style="display:none; position:fixed; left:50%; top:50%; transform:translate(-50%, -50%); padding:20px; background:white; border-radius:5px; box-shadow:0 0 10px rgba(0,0,0,0.5);">
+        <p style="text-align:center;">请用微信扫码<br /></p>
+        <img id="qrImage" src="" alt="二维码" />
+        <p style="text-align:center;"> <button style="align-content:center;" onclick="document.getElementById('qrModal').style.display='none';">关闭</button></p>
     </div>
     <div class="footer">
         <p>版权所有 © 2024 联盟图书馆</p>
@@ -242,6 +250,12 @@
             search();
         });
     });
+    //显示微信扫码申请安全可控数字借阅
+    function showQRCode(id) {
+        var qrCodeUrl = './api/holding/qrLogo/?url=wxDigitLoan' + id;
+        document.getElementById('qrImage').src = qrCodeUrl;
+        document.getElementById('qrModal').style.display = 'block';
+    }
     //组合检索条件后检索并绑定到前端
     function search()
     {
