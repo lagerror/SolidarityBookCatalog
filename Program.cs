@@ -12,6 +12,7 @@ using Serilog.Context;
 using Serilog.Sinks.MongoDB;
 using System.Security.Principal;
 using Microsoft.Extensions.Primitives;
+using Microsoft.AspNetCore.Http.Features;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -22,7 +23,11 @@ Log.Logger = new LoggerConfiguration()
     .CreateLogger();
 
 builder.Host.UseSerilog(); // 使用Serilog作为日志提供者
-
+//
+builder.Services.Configure<FormOptions>(options =>
+{
+    options.MultipartBodyLengthLimit = 100 * 1024 * 1024; // 100MB
+});
 // 添加身份验证服务并配置 JWT Bearer 认证
 builder.Services.AddAuthentication(options =>
 {
@@ -59,7 +64,7 @@ builder.Services.AddCors(options =>
     options.AddPolicy("AllowSpecificOrigin", builder =>
     {
         builder.AllowAnyOrigin()
-                //.WithOrigins("http://localhost:5174") // 允许的域名
+                //.WithOrigins("http://localhost:5173") // 允许的域名
                .AllowAnyHeader()                 // 允许任何头
                .AllowAnyMethod();                // 允许任何方法
     });
@@ -82,6 +87,8 @@ builder.Services.AddSingleton<ReaderService>();
 builder.Services.AddSingleton<LoanWorkService>();
 builder.Services.AddSingleton<IsdlLoanService>();
 builder.Services.AddSingleton<ToolService>();
+builder.Services.AddSingleton<FiscoService>();
+builder.Services.AddSingleton<MinioService>();
 
 
 // 添加内存缓存

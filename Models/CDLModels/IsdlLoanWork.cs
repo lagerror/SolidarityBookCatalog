@@ -36,10 +36,10 @@ namespace SolidarityBookCatalog.Models.CDLModels
         //文件上传时间
         [BsonElement("fileUpTime")]
         [BsonDateTimeOptions(Kind = DateTimeKind.Utc)]
-        public DateTime? FileUploadTime { get; set; }
+        public DateTime? FileUpTime { get; set; }
         //文件上传人
         [BsonElement("fileUpOpenId")]
-        public string? FileUploaderOpenId { get; set; }
+        public string? FileUpOpenId { get; set; }
         //文件路径
         [BsonElement("filePath")]
         public string? FilePath { get; set; }
@@ -61,8 +61,8 @@ namespace SolidarityBookCatalog.Models.CDLModels
         [BsonElement("fileType")]
         [BsonRepresentation(BsonType.String)]
         public string FileType { get; set; } = "pdf";
-
-
-
+        //取消申请时候的备注
+        [BsonElement("remark")]
+        public string? Remark { get; set; }
     }
 }

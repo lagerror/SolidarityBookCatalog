@@ -26,8 +26,10 @@ namespace SolidarityBookCatalog.Services
         private readonly ILogger<IsdlLoanService> _logger;
         private readonly IMongoDatabase database;
         private readonly ToolService _toolService;
+        
         public IsdlLoanService( IConfiguration configuration, IMongoClient client,ILogger<IsdlLoanService> logger,ToolService toolService)
         {
+           
             database = client.GetDatabase("BookReShare");
             _IsdlLoanWork = database.GetCollection<IsdlLoanWork>("isdlLoanWork");
             _Biblios = database.GetCollection<Biblios>("biblios");
@@ -51,14 +53,19 @@ namespace SolidarityBookCatalog.Services
             try
             {
                 Biblios biblios=await _Biblios.Find(x => x.Identifier == application.ISBN).FirstOrDefaultAsync();
-                Reader reader = await _Reader.Find(x => x.OpenId == application.ReaderOpenId).FirstOrDefaultAsync();
+                Reader reader = await _Reader.Find(x => x.OpenId ==openId).FirstOrDefaultAsync();
                 //屏蔽相关信息
                 reader.Password = "";
-                reader.Phone = "";
                 reader.OpenId = "";
                 //直接写入借阅记录
                 loan.Biblios = biblios;
                 loan.Reader = reader;
+                //判断服务器上文件是否存在，如果存在，则修改状态为文件已经上传
+                string filePath = Path.Combine(_fileStoragePath, $"{biblios.Identifier}");
+                if (File.Exists(filePath+".pdf") | File.Exists(filePath+".epub")) { 
+                    loan.Status = LoanStatus.Approved;
+                    loan.FileUpTime = DateTime.Now;
+                }
                 await _IsdlLoanWork.InsertOneAsync(loan);
             }
             catch (Exception ex)
@@ -134,9 +141,9 @@ namespace SolidarityBookCatalog.Services
                 await fileUpload.File.CopyToAsync(stream);
             }
             var update = Builders<IsdlLoanWork>.Update
-                .Set(l => l.FilePath, filePath)
-                .Set(l => l.FileUploadTime, DateTime.UtcNow)
-                .Set(l => l.FileUploaderOpenId, fileUpload.UploaderOpenId)
+                //.Set(l => l.FilePath, filePath)
+                .Set(l => l.FileUpTime, DateTime.UtcNow)
+                .Set(l => l.FileUpOpenId, fileUpload.UploaderOpenId)
                 .Set(l => l.Status, LoanStatus.Completed);
 
             var result = await _IsdlLoanWork.UpdateOneAsync(
