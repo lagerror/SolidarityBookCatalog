@@ -1,6 +1,8 @@
 ﻿using Elastic.Clients.Elasticsearch.IndexManagement;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Minio;
+using Minio.DataModel;
 using Minio.DataModel.Args;
 using MongoDB.Driver;
 using SharpCompress.Compressors.Xz;
@@ -9,6 +11,7 @@ using SolidarityBookCatalog.Models.CDLModels;
 using SolidarityBookCatalog.Services;
 using System.IO;
 using System.IO.Pipes;
+using System.Security.AccessControl;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -41,6 +44,7 @@ namespace SolidarityBookCatalog.Controllers
         private string userAddress;
         private FiscoService _fiscoService;
         private MinioService _minioService;
+       
         public IsdlController(MinioService minioService, FiscoService fiscoService, IWeChatService weChatService, IMongoClient client, IsdlLoanService isdlLoanService, BibliosService bibliosService, ILogger<IsdlController> logger,ReaderService readerService,ToolService toolService,IConfiguration configuration)
         {
             var database = client.GetDatabase("BookReShare");
@@ -54,6 +58,7 @@ namespace SolidarityBookCatalog.Controllers
             _fiscoService= fiscoService;
             _configuration = configuration;
             _minioService= minioService;
+           
             filePath =_configuration["ISDL:path"];
             bucketName = _configuration["Minio:Bucket"];
 
@@ -354,7 +359,7 @@ namespace SolidarityBookCatalog.Controllers
         [HttpPost]
         [Route("upFile")]
         [RequestSizeLimit(100 * 1024 * 1024)]
-       // [Authorize(Policy = "AdminOrManager")]
+        //[Authorize(Policy = "AdminOrManager")]
         public async Task<IActionResult> upFile(string id, IFormFile file)
         { 
             Msg msg = new Msg();
@@ -377,46 +382,32 @@ namespace SolidarityBookCatalog.Controllers
                 msg.Message = "没有找到对应的申请";
                 return Ok(msg);
             }
-            //保存文件
-            //string fileName = Path.Combine(filePath, $"{loan.ISBN}{Path.GetExtension(file.FileName)}");
-            //using (var stream = new FileStream(fileName, FileMode.Create))
-            //{ 
-            //   await file.CopyToAsync(stream);
-            //}
-            
-            //上传文件到minio
-            //_minioService._minioClient
-            using (var stream = new MemoryStream())
-            { 
-                await file.CopyToAsync (stream);
-                stream.Position = 0;
-                //上传参数
-                var putObjectArgs = new PutObjectArgs()
-                    .WithBucket(bucketName)
-                    .WithObject($"{loan.ISBN}{Path.GetExtension(file.FileName)}")
-                    .WithStreamData(stream)
-                    .WithObjectSize(stream.Length)
-                    .WithContentType(Path.GetExtension(file.FileName));
-                //开始上传
-                try
-                {
-                    await _minioService._minioClient.PutObjectAsync(putObjectArgs).ConfigureAwait(false);
-                }
-                catch (Exception ex) {
-                    msg.Code = 200;
-                    msg.Message = $"文件上传到minio失败：{ex.Message}";
-                    return Ok(msg);
-                }
-            }
-            //更新记录状态
-            var update = Builders<IsdlLoanWork>.Update
-                .Set(x => x.FilePath, Path.GetExtension(file.FileName))
-                .Set(x => x.FileUpTime, DateTime.UtcNow)
-                .Set(x=>x.ExpiryDate, DateTime.UtcNow.AddDays(15))
-                .Set(x => x.FileUpOpenId, user.Identity.Name)
-                .Set(x => x.Status, LoanStatus.Approved);
+            //上传文件
             try
             {
+                string objectName = $"{loan.ISBN}{Path.GetExtension(file.FileName)}";
+               
+                await UploadFileSinglePart(file, bucketName, objectName);
+               
+            }
+            catch (Exception ex)
+            {
+                msg.Code = 200;
+                msg.Message = $"上传文件错误:{ex.Message}";
+                return Ok(msg);
+            }
+
+
+            //更新记录状态
+            try
+            {
+                
+                var update = Builders<IsdlLoanWork>.Update
+                    .Set(x => x.FilePath, Path.GetExtension(file.FileName))
+                    .Set(x => x.FileUpTime, DateTime.UtcNow)
+                    .Set(x => x.ExpiryDate, DateTime.UtcNow.AddDays(15))
+                    .Set(x => x.FileUpOpenId, user.Identity.Name)
+                    .Set(x => x.Status, LoanStatus.Approved);
                 var result = await _isdlLoanWork.UpdateOneAsync(
                     Builders<IsdlLoanWork>.Filter.Eq(x => x.Id, id),
                     update
@@ -578,7 +569,24 @@ namespace SolidarityBookCatalog.Controllers
 
             return Ok(msg);
         }
-              
 
+
+        private async Task UploadFileSinglePart(IFormFile file, string bucketName, string objectName)
+        {
+            using var stream = new MemoryStream();
+            await file.CopyToAsync(stream);
+            stream.Position = 0;
+
+            var putObjectArgs = new PutObjectArgs()
+                .WithBucket(bucketName)
+                .WithObject(objectName)
+                .WithStreamData(stream)
+                .WithObjectSize(stream.Length)
+                .WithContentType(file.ContentType);
+
+            await _minioService._minioClient.PutObjectAsync(putObjectArgs).ConfigureAwait(false);
+        }
+
+    
     }
 }

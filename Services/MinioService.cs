@@ -1,4 +1,5 @@
 ﻿using Minio;
+using Minio.DataModel.Args;
 
 namespace SolidarityBookCatalog.Services
 {
@@ -12,5 +13,6 @@ namespace SolidarityBookCatalog.Services
                 .WithCredentials(configuration["Minio:UserName"].ToString(), configuration["Minio:Password"].ToString());
             _minioClient.Build ();
         }
+      
     }
 }

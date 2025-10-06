@@ -89,6 +89,7 @@ builder.Services.AddSingleton<IsdlLoanService>();
 builder.Services.AddSingleton<ToolService>();
 builder.Services.AddSingleton<FiscoService>();
 builder.Services.AddSingleton<MinioService>();
+builder.Services.AddSingleton<WkService>();
 
 
 // Ìí¼ÓÄÚ´æ»º´æ
