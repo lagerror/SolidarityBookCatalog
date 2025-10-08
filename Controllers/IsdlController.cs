@@ -64,57 +64,6 @@ namespace SolidarityBookCatalog.Controllers
 
         }
 
-        //[HttpPost("decrypt")]
-        //[RequestSizeLimit(100_000_000)] // 限制100MB
-        //[Consumes("application/octet-stream")]
-        //public async Task<IActionResult> DecryptFile(string openId,string applyId)
-        //{
-        //    try
-        //    {
-        //        // 1. 获取当前用户信息
-        //        Msg msg = new Msg();
-        //        var ret = _toolService.DeCryptOpenId(openId);
-
-        //        if (!ret.Item1)
-        //        {
-        //            msg.Code = 3;
-        //            msg.Message = $"OpenId解密失败";
-        //            return BadRequest($"Invalid file format: {msg.Message}");
-        //        }
-
-        //        openId = ret.Item2;
-        //        var reader =await _readerService.SearchByOpenId(openId); // 实现此方法获取当前用户
-        //        IsdlLoanWork loan = await _sdlLoanService.getLoanById(applyId);  //获取指定的借阅记录
-
-        //        //获取要解密的文件
-        //        var originalFileName =   $"{filePath}\\{reader.ReaderNo}_{loan.ISBN}.enc";
-        //        var downloadFileName = $"{reader.ReaderNo}_{loan.ISBN}.{loan.FileType}";
-               
-
-               
-
-        //        using (var fileStream = System.IO.File.OpenRead(originalFileName)) {
-        //            Response.Headers.ContentDisposition = $"attachment; filename={downloadFileName}";
-        //            Response.ContentType = "application/octet-stream";
-
-        //           await _toolService.DecryptFileStreaming(
-        //           reader,
-        //           loan,
-        //           fileStream,
-        //          Response.Body);
-        //        }
-        //        return new EmptyResult();
-        //    }
-        //    catch (InvalidDataException ex)
-        //    {
-        //        return BadRequest($"Invalid file format: {ex.Message}");
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        return StatusCode(500, $"Decryption failed: {ex.Message}");
-        //    }
-        //}
-
         //根据readerOpenId和申请号下载加密文件
         [HttpGet("download")]
         public async Task<IActionResult> DownloadEncryptedFile(string openId,string applyId)
@@ -157,7 +106,7 @@ namespace SolidarityBookCatalog.Controllers
             {
                 var args = new StatObjectArgs()
                     .WithBucket(bucketName)
-                    .WithObject(originalFileName);
+                    .WithObject($"cdl/{originalFileName}");
                 var stat = await _minioService._minioClient.StatObjectAsync(args).ConfigureAwait(false);
                 if (stat == null)
                 {
@@ -168,7 +117,7 @@ namespace SolidarityBookCatalog.Controllers
                 var memoryBuffer =new MemoryStream();  //使用一个缓存，避免直接连接两个网络流
                 var getObjectArgs = new GetObjectArgs()
                 .WithBucket(bucketName)
-                .WithObject(originalFileName)
+                .WithObject($"cdl/{originalFileName}")
                 .WithCallbackStream(async (stream, cancellationToken) =>
                 {
                     minioStream = stream;
@@ -385,7 +334,7 @@ namespace SolidarityBookCatalog.Controllers
             //上传文件
             try
             {
-                string objectName = $"{loan.ISBN}{Path.GetExtension(file.FileName)}";
+                string objectName = $"cdl/{loan.ISBN}{Path.GetExtension(file.FileName)}";
                
                 await UploadFileSinglePart(file, bucketName, objectName);
                

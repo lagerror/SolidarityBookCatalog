@@ -7,6 +7,9 @@ using SolidarityBookCatalog.Models;
 using System.Text;
 using Microsoft.AspNetCore.DataProtection.AuthenticatedEncryption.ConfigurationModel;
 using SolidarityBookCatalog.Models.CDLModels;
+using SolidarityBookCatalog.Models.WKModels;
+using Elastic.Clients.Elasticsearch.Ingest;
+using System.Web;
 
 namespace SolidarityBookCatalog.Services
 {
@@ -71,7 +74,47 @@ namespace SolidarityBookCatalog.Services
                 throw;
             }
         }
+        //加密专题库文件
+        public async Task EncryptKnowledgeFile(Reader reader, KnowledgeDataItem knowledge, Stream inputStream, Stream outStream, int bufferSize = 81920)
+        {
+            byte[] key = new byte[32];
+            byte[] iv = new byte[16];
 
+            using var aes = Aes.Create();
+            aes.Mode = CipherMode.CBC;
+            aes.Padding = PaddingMode.PKCS7;
+            //使用openid+申请id+isbn作为密码，iv随机生成
+            using (var sha256 = SHA256.Create())
+            {
+                string temp = reader.OpenId + "|" + knowledge.id + "|" + knowledge.file_hash;
+                Console.WriteLine($"知识库加密串： {temp}");
+                key = sha256.ComputeHash(Encoding.UTF8.GetBytes(temp));
+                byte[] ivTemp = sha256.ComputeHash(Encoding.UTF8.GetBytes(reader.ReaderNo + "|" + reader.OpenId + "|" + knowledge.id));
+                Array.Copy(ivTemp, iv, 16);
+
+            }
+            aes.Key = key;
+            aes.IV = iv;
+            //写入iv
+            await outStream.WriteAsync(iv, 0, 16);
+
+
+            using var encryptor = aes.CreateEncryptor(aes.Key, aes.IV);
+            using var cryptoStream = new CryptoStream(outStream, encryptor, CryptoStreamMode.Write);
+
+            var buffer = new byte[bufferSize];
+            int bytesRead;
+
+            while ((bytesRead = await inputStream.ReadAsync(buffer, 0, buffer.Length)) > 0)
+            {
+                await cryptoStream.WriteAsync(buffer, 0, bytesRead);
+
+                await cryptoStream.FlushAsync();
+                await outStream.FlushAsync();
+            }
+
+            await cryptoStream.FlushFinalBlockAsync();
+        }
         //加密文件
         public async Task EncryptFile(Reader reader,IsdlLoanWork loan, Stream inputStream,Stream outStream,int bufferSize=81920)
         {
@@ -83,7 +126,8 @@ namespace SolidarityBookCatalog.Services
             aes.Padding=PaddingMode.PKCS7;
             //使用openid+申请id+isbn作为密码，iv随机生成
             using (var sha256 = SHA256.Create()) {
-                string temp= loan.ReaderOpenId + "|" + loan.Id+"|"+loan.ISBN;
+                string temp= HttpUtility.UrlDecode(loan.ReaderOpenId) + "|" + loan.Id+"|"+loan.ISBN;
+                Console.WriteLine($"CDL加密串： {temp}");
                 key = sha256.ComputeHash(Encoding.UTF8.GetBytes(temp)); 
                 byte[] ivTemp= sha256.ComputeHash(Encoding.UTF8.GetBytes(reader.ReaderNo+"|"+reader.Id+"|"+loan.Id));
                 Array.Copy(ivTemp, iv, 16);

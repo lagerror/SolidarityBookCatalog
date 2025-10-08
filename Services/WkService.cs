@@ -5,6 +5,11 @@ using System.Text.Json;
 
 namespace SolidarityBookCatalog.Services
 {
+    public class temp
+    {
+        public KnowledgeDataItem data { get; set; }
+        public bool success { get; set; }
+    }
     public class WkService
     {
         private readonly HttpClient _httpClient;
@@ -43,7 +48,21 @@ namespace SolidarityBookCatalog.Services
             var result = JsonSerializer.Deserialize<Knowledge>(responseJson);
             return result;
         }
-
+        //获取知识库列表下知识（文件）
+        public async Task<KnowledgeDataItem> GetKnowledgeItemAsync(string id)
+        {
+            var requestMessage = new HttpRequestMessage(HttpMethod.Get, $"{_ip}/api/v1/knowledge/{id}");
+            //requestMessage.Headers.Add( "Content-Type", "application/json" );
+            requestMessage.Headers.Add("X-API-Key", _apiKey);
+            var response = await _httpClient.SendAsync(requestMessage);
+            response.EnsureSuccessStatusCode();
+            var responseJson = await response.Content.ReadAsStringAsync();
+            var result = JsonSerializer.Deserialize<temp>(responseJson);
+            if(result.success)
+                return result.data;
+            else
+                return null;
+        }
         public async Task<Msg> upFileAsync(string id,IFormFile file)
         {
             Msg msg=new Msg();
